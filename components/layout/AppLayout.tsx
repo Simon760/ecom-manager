@@ -1,0 +1,89 @@
+'use client'
+// ============================================================
+// APP LAYOUT — Wrapper principal avec sidebar + guard auth
+// ============================================================
+import React, { Suspense, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/contexts/AuthContext'
+import Sidebar from './Sidebar'
+import Spinner from '@/components/ui/Spinner'
+import Modal from '@/components/ui/Modal'
+import ProjectForm from '@/components/projects/ProjectForm'
+import { createProject } from '@/services/projects.service'
+import { ProjectFormData } from '@/types'
+
+interface AppLayoutProps {
+  children: React.ReactNode
+}
+
+function AppLayoutInner({ children }: AppLayoutProps) {
+  const { user, loading } = useAuth()
+  const router = useRouter()
+  const [showNewProject, setShowNewProject] = useState(false)
+  const [creating, setCreating] = useState(false)
+
+  // Redirection si non connecté
+  React.useEffect(() => {
+    if (!loading && !user) {
+      router.replace('/auth')
+    }
+  }, [user, loading, router])
+
+  if (loading) {
+    return <Spinner fullPage size="lg" text="Chargement…" />
+  }
+
+  if (!user) return null
+
+  const handleCreateProject = async (data: ProjectFormData) => {
+    setCreating(true)
+    try {
+      const project = await createProject(user.uid, data)
+      setShowNewProject(false)
+      // Redirige vers le tracker du nouveau projet
+      router.push(`/tracker?projectId=${project.id}`)
+      // Force le rechargement du sidebar via une légère navigation
+      window.location.href = `/tracker?projectId=${project.id}`
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  return (
+    <div className="flex min-h-screen bg-zinc-950">
+      {/* Sidebar (inclut useSearchParams, donc dans Suspense) */}
+      <Suspense fallback={<div className="w-56 bg-zinc-950 border-r border-zinc-800" />}>
+        <Sidebar onNewProject={() => setShowNewProject(true)} />
+      </Suspense>
+
+      {/* Contenu principal */}
+      <main className="flex-1 min-w-0 overflow-x-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:pl-8">
+          {children}
+        </div>
+      </main>
+
+      {/* Modal nouveau projet */}
+      <Modal
+        isOpen={showNewProject}
+        onClose={() => setShowNewProject(false)}
+        title="Nouveau projet"
+        size="md"
+      >
+        <ProjectForm
+          onSubmit={handleCreateProject}
+          onCancel={() => setShowNewProject(false)}
+          loading={creating}
+        />
+      </Modal>
+    </div>
+  )
+}
+
+export default function AppLayout({ children }: AppLayoutProps) {
+  return (
+    <Suspense fallback={<Spinner fullPage size="lg" text="Initialisation…" />}>
+      <AppLayoutInner>{children}</AppLayoutInner>
+    </Suspense>
+  )
+}
