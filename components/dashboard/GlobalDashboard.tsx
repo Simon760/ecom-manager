@@ -43,20 +43,25 @@ export default function GlobalDashboard() {
   useEffect(() => {
     if (!user) return
     const load = async () => {
-      const projects = await getProjects(user.uid)
-      const results = await Promise.all(
-        projects.map(async (project) => {
-          const stats = await getDailyStats(
-            project.id,
-            user.uid,
-            days30[0],
-            days30[days30.length - 1]
-          )
-          return { project, stats, metrics: aggregateStats(stats) }
-        })
-      )
-      setData(results)
-      setLoading(false)
+      try {
+        const projects = await getProjects(user.uid)
+        const results = await Promise.all(
+          projects.map(async (project) => {
+            const stats = await getDailyStats(
+              project.id,
+              user.uid,
+              days30[0],
+              days30[days30.length - 1]
+            )
+            return { project, stats, metrics: aggregateStats(stats) }
+          })
+        )
+        setData(results)
+      } catch (err) {
+        console.error('Erreur chargement dashboard:', err)
+      } finally {
+        setLoading(false)
+      }
     }
     load()
   }, [user]) // eslint-disable-line
