@@ -1,11 +1,7 @@
 'use client'
-// ============================================================
-// PRODUCTS PAGE — Suivi des produits
-// ============================================================
 import React, { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
-import AppLayout from '@/components/layout/AppLayout'
 import TopBar from '@/components/layout/TopBar'
 import ProductsManager from '@/components/products/ProductsManager'
 import Badge from '@/components/ui/Badge'
@@ -27,32 +23,21 @@ function ProductsContent() {
     getProjects(user.uid).then((ps) => {
       const p = ps.find((x) => x.id === projectId)
       if (!p) { router.replace('/projects'); return }
-      setProject(p)
-      setLoading(false)
+      setProject(p); setLoading(false)
     })
   }, [user, projectId]) // eslint-disable-line
 
   if (loading) return <Spinner size="md" className="mt-16 mx-auto" />
   if (!project) return null
-
   return (
     <div>
-      <TopBar
-        title={project.name}
-        subtitle="Suivi des produits"
-        badge={<Badge variant="violet">{CURRENCY_SYMBOLS[project.currency]} {project.currency}</Badge>}
-      />
+      <TopBar title={project.name} subtitle="Suivi des produits"
+        badge={<Badge variant="violet">{CURRENCY_SYMBOLS[project.currency]} {project.currency}</Badge>} />
       <ProductsManager projectId={project.id} currency={project.currency} />
     </div>
   )
 }
 
 export default function ProductsPage() {
-  return (
-    <AppLayout>
-      <Suspense fallback={<Spinner size="md" className="mt-16 mx-auto" />}>
-        <ProductsContent />
-      </Suspense>
-    </AppLayout>
-  )
+  return <Suspense fallback={<Spinner size="md" className="mt-16 mx-auto" />}><ProductsContent /></Suspense>
 }
