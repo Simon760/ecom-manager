@@ -146,7 +146,12 @@ export default function TrackerTable({ stats, currency, onEdit, onDelete, breakE
                 {showCOGS && (
                   <td className="px-3 py-3">
                     {stat.cogsTotal ? (
-                      <span className="text-amber-400/80" title={stat.offerName}>
+                      <span
+                        className="text-amber-400/80 cursor-help"
+                        title={stat.offerBreakdowns
+                          ?.map((b) => `${b.offerName}: ${b.orders} × ${b.cogsPerOrder.toFixed(2)} = ${b.cogsTotal.toFixed(2)}`)
+                          .join('\n') ?? ''}
+                      >
                         − {formatCurrency(stat.cogsTotal, currency)}
                       </span>
                     ) : <span className="text-zinc-700">—</span>}
