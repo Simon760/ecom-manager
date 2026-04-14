@@ -10,7 +10,6 @@ import {
   getDocs,
   query,
   where,
-  orderBy,
   serverTimestamp,
   Timestamp,
 } from 'firebase/firestore'
@@ -51,19 +50,19 @@ export async function getDailyStats(
   startDate?: string,
   endDate?: string
 ): Promise<DailyStat[]> {
-  let q = query(
+  const q = query(
     collection(db, COLLECTIONS.DAILY_STATS),
     where('projectId', '==', projectId),
-    where('userId', '==', userId),
-    orderBy('date', 'desc')
+    where('userId', '==', userId)
   )
 
   const snap = await getDocs(q)
   let stats = snap.docs.map((d) => toDailyStat(d.id, d.data() as Record<string, unknown>))
 
-  // Filtre en client-side pour éviter des index composites supplémentaires
+  // Tri et filtre client-side (évite les index composites Firestore)
   if (startDate) stats = stats.filter((s) => s.date >= startDate)
   if (endDate) stats = stats.filter((s) => s.date <= endDate)
+  stats.sort((a, b) => b.date.localeCompare(a.date))
 
   return stats
 }

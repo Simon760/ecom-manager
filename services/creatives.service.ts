@@ -10,7 +10,6 @@ import {
   getDocs,
   query,
   where,
-  orderBy,
   serverTimestamp,
   Timestamp,
 } from 'firebase/firestore'
@@ -39,11 +38,11 @@ export async function getCreatives(projectId: string, userId: string): Promise<C
   const q = query(
     collection(db, COLLECTIONS.CREATIVES),
     where('projectId', '==', projectId),
-    where('userId', '==', userId),
-    orderBy('createdAt', 'desc')
+    where('userId', '==', userId)
   )
   const snap = await getDocs(q)
-  return snap.docs.map((d) => toCreative(d.id, d.data() as Record<string, unknown>))
+  const items = snap.docs.map((d) => toCreative(d.id, d.data() as Record<string, unknown>))
+  return items.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
 }
 
 export async function addCreative(

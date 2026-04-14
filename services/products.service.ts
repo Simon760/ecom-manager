@@ -10,7 +10,6 @@ import {
   getDocs,
   query,
   where,
-  orderBy,
   serverTimestamp,
   Timestamp,
 } from 'firebase/firestore'
@@ -48,11 +47,11 @@ export async function getProducts(projectId: string, userId: string): Promise<Pr
   const q = query(
     collection(db, COLLECTIONS.PRODUCTS),
     where('projectId', '==', projectId),
-    where('userId', '==', userId),
-    orderBy('createdAt', 'desc')
+    where('userId', '==', userId)
   )
   const snap = await getDocs(q)
-  return snap.docs.map((d) => toProduct(d.id, d.data() as Record<string, unknown>))
+  const items = snap.docs.map((d) => toProduct(d.id, d.data() as Record<string, unknown>))
+  return items.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
 }
 
 export async function addProduct(

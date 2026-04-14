@@ -10,7 +10,6 @@ import {
   getDocs,
   query,
   where,
-  orderBy,
   serverTimestamp,
   Timestamp,
 } from 'firebase/firestore'
@@ -42,13 +41,13 @@ export async function getExpenses(
   const q = query(
     collection(db, COLLECTIONS.EXPENSES),
     where('projectId', '==', projectId),
-    where('userId', '==', userId),
-    orderBy('date', 'desc')
+    where('userId', '==', userId)
   )
   const snap = await getDocs(q)
   let items = snap.docs.map((d) => toExpense(d.id, d.data() as Record<string, unknown>))
   if (startDate) items = items.filter((i) => i.date >= startDate)
   if (endDate) items = items.filter((i) => i.date <= endDate)
+  items.sort((a, b) => b.date.localeCompare(a.date))
   return items
 }
 
@@ -95,13 +94,13 @@ export async function getRevenues(
   const q = query(
     collection(db, COLLECTIONS.REVENUES),
     where('projectId', '==', projectId),
-    where('userId', '==', userId),
-    orderBy('date', 'desc')
+    where('userId', '==', userId)
   )
   const snap = await getDocs(q)
   let items = snap.docs.map((d) => toRevenue(d.id, d.data() as Record<string, unknown>))
   if (startDate) items = items.filter((i) => i.date >= startDate)
   if (endDate) items = items.filter((i) => i.date <= endDate)
+  items.sort((a, b) => b.date.localeCompare(a.date))
   return items
 }
 

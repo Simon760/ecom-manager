@@ -10,7 +10,6 @@ import {
   getDocs,
   query,
   where,
-  orderBy,
   serverTimestamp,
   Timestamp,
 } from 'firebase/firestore'
@@ -34,11 +33,12 @@ function toProject(id: string, data: Record<string, unknown>): Project {
 export async function getProjects(userId: string): Promise<Project[]> {
   const q = query(
     collection(db, COLLECTIONS.PROJECTS),
-    where('userId', '==', userId),
-    orderBy('createdAt', 'desc')
+    where('userId', '==', userId)
   )
   const snap = await getDocs(q)
-  return snap.docs.map((d) => toProject(d.id, d.data() as Record<string, unknown>))
+  const projects = snap.docs.map((d) => toProject(d.id, d.data() as Record<string, unknown>))
+  // Tri client-side (évite d'avoir besoin d'un index Firestore composite)
+  return projects.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
 }
 
 /** Crée un nouveau projet */

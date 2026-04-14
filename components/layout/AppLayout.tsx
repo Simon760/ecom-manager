@@ -40,10 +40,8 @@ function AppLayoutInner({ children }: AppLayoutProps) {
     try {
       const project = await createProject(user.uid, data)
       setShowNewProject(false)
-      // Redirige vers le tracker du nouveau projet
+      // Redirige vers le tracker du nouveau projet (router.push gère le basePath automatiquement)
       router.push(`/tracker?projectId=${project.id}`)
-      // Force le rechargement du sidebar via une légère navigation
-      window.location.href = `/tracker?projectId=${project.id}`
     } finally {
       setCreating(false)
     }
