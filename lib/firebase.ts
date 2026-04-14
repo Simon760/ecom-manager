@@ -1,7 +1,7 @@
 // ============================================================
 // FIREBASE — Initialisation client-side uniquement
 // ============================================================
-import { initializeApp, getApps, FirebaseApp } from 'firebase/app'
+import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app'
 import { getAuth, Auth } from 'firebase/auth'
 import { getFirestore, Firestore } from 'firebase/firestore'
 
@@ -15,15 +15,11 @@ const firebaseConfig = {
 }
 
 // Singleton — évite la double initialisation en hot-reload
-let app: FirebaseApp
-let auth: Auth
-let db: Firestore
-
-if (typeof window !== 'undefined') {
-  app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
-  auth = getAuth(app)
-  db = getFirestore(app)
-}
+// On initialise toujours l'app Firebase (côté client comme serveur pour le build statique)
+// Les appels réels n'ont lieu que côté client grâce aux guards dans AuthContext et les services
+const app: FirebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp()
+const auth: Auth = getAuth(app)
+const db: Firestore = getFirestore(app)
 
 export { app, auth, db }
 

@@ -30,12 +30,23 @@ interface AuthContextType {
 // --- Création du contexte ---
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+// --- Clé de rafraîchissement des projets (partagée via contexte) ---
+export const ProjectRefreshContext = React.createContext<{
+  refreshKey: number
+  triggerRefresh: () => void
+}>({ refreshKey: 0, triggerRefresh: () => {} })
+
 // --- Provider ---
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [refreshKey, setRefreshKey] = useState(0)
   const router = useRouter()
+
+  const triggerRefresh = React.useCallback(() => {
+    setRefreshKey((k) => k + 1)
+  }, [])
 
   // Écoute les changements d'état Firebase Auth
   useEffect(() => {
@@ -92,9 +103,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const clearError = () => setError(null)
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, error, clearError }}>
-      {children}
-    </AuthContext.Provider>
+    <ProjectRefreshContext.Provider value={{ refreshKey, triggerRefresh }}>
+      <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, error, clearError }}>
+        {children}
+      </AuthContext.Provider>
+    </ProjectRefreshContext.Provider>
   )
 }
 

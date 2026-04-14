@@ -16,18 +16,35 @@ function FinanceContent() {
   const projectId = searchParams.get('projectId')
   const [project, setProject] = useState<Project | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!projectId) { router.replace('/projects'); return }
     if (!user) return
-    getProjects(user.uid).then((ps) => {
-      const p = ps.find((x) => x.id === projectId)
-      if (!p) { router.replace('/projects'); return }
-      setProject(p); setLoading(false)
-    })
+    let cancelled = false
+    getProjects(user.uid)
+      .then((ps) => {
+        if (cancelled) return
+        const p = ps.find((x) => x.id === projectId)
+        if (!p) { router.replace('/projects'); return }
+        setProject(p); setLoading(false)
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error('Erreur chargement projet finance:', err)
+          setLoadError('Erreur lors du chargement du projet.')
+          setLoading(false)
+        }
+      })
+    return () => { cancelled = true }
   }, [user, projectId]) // eslint-disable-line
 
   if (loading) return <Spinner size="md" className="mt-16 mx-auto" />
+  if (loadError) return (
+    <div className="mt-16 mx-auto max-w-md p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-300 text-center">
+      {loadError}
+    </div>
+  )
   if (!project) return null
   return (
     <div>

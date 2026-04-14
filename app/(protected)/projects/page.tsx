@@ -22,46 +22,80 @@ export default function ProjectsPage() {
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
-    getProjects(user.uid).then(setProjects).finally(() => setLoading(false))
+    let cancelled = false
+    getProjects(user.uid)
+      .then((ps) => { if (!cancelled) setProjects(ps) })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error('Erreur chargement projets:', err)
+          setLoadError('Erreur lors du chargement des projets.')
+        }
+      })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
   }, [user])
 
   const handleCreate = async (data: ProjectFormData) => {
     if (!user) return
     setSaving(true)
+    setSaveError(null)
     try {
       const project = await createProject(user.uid, data)
       setProjects((prev) => [project, ...prev])
       setShowCreate(false)
+    } catch (err) {
+      console.error('Erreur création projet:', err)
+      setSaveError('Erreur lors de la création du projet.')
     } finally { setSaving(false) }
   }
 
   const handleUpdate = async (data: ProjectFormData) => {
     if (!editProject) return
     setSaving(true)
+    setSaveError(null)
     try {
       await updateProject(editProject.id, data)
       setProjects((prev) => prev.map((p) => p.id === editProject.id ? { ...p, ...data } : p))
       setEditProject(null)
+    } catch (err) {
+      console.error('Erreur mise à jour projet:', err)
+      setSaveError('Erreur lors de la mise à jour du projet.')
     } finally { setSaving(false) }
   }
 
   const handleDelete = async () => {
     if (!deleteTarget || !user) return
     setDeleting(true)
+    setSaveError(null)
     try {
       await deleteProject(deleteTarget.id, user.uid)
       setProjects((prev) => prev.filter((p) => p.id !== deleteTarget.id))
       setDeleteTarget(null)
+    } catch (err) {
+      console.error('Erreur suppression projet:', err)
+      setSaveError('Erreur lors de la suppression du projet.')
     } finally { setDeleting(false) }
   }
 
   if (loading) return <Spinner size="md" className="mt-16 mx-auto" />
+  if (loadError) return (
+    <div className="mt-16 mx-auto max-w-md p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-300 text-center">
+      {loadError}
+    </div>
+  )
 
   return (
     <div>
+      {saveError && (
+        <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-300">
+          {saveError}
+        </div>
+      )}
       <TopBar
         title="Mes projets"
         subtitle={`${projects.length} projet${projects.length > 1 ? 's' : ''}`}

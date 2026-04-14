@@ -2,9 +2,9 @@
 // ============================================================
 // APP LAYOUT — Wrapper principal avec sidebar + guard auth
 // ============================================================
-import React, { Suspense, useState } from 'react'
+import React, { Suspense, useState, useContext } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth, ProjectRefreshContext } from '@/contexts/AuthContext'
 import Sidebar from './Sidebar'
 import Spinner from '@/components/ui/Spinner'
 import Modal from '@/components/ui/Modal'
@@ -18,9 +18,11 @@ interface AppLayoutProps {
 
 function AppLayoutInner({ children }: AppLayoutProps) {
   const { user, loading } = useAuth()
+  const { triggerRefresh } = useContext(ProjectRefreshContext)
   const router = useRouter()
   const [showNewProject, setShowNewProject] = useState(false)
   const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
 
   // Redirection si non connecté
   React.useEffect(() => {
@@ -37,11 +39,17 @@ function AppLayoutInner({ children }: AppLayoutProps) {
 
   const handleCreateProject = async (data: ProjectFormData) => {
     setCreating(true)
+    setCreateError(null)
     try {
       const project = await createProject(user.uid, data)
       setShowNewProject(false)
+      // Déclenche le rafraîchissement de la sidebar
+      triggerRefresh()
       // Redirige vers le tracker du nouveau projet (router.push gère le basePath automatiquement)
       router.push(`/tracker?projectId=${project.id}`)
+    } catch (err) {
+      console.error('Erreur création projet:', err)
+      setCreateError('Erreur lors de la création du projet. Veuillez réessayer.')
     } finally {
       setCreating(false)
     }
@@ -64,13 +72,18 @@ function AppLayoutInner({ children }: AppLayoutProps) {
       {/* Modal nouveau projet */}
       <Modal
         isOpen={showNewProject}
-        onClose={() => setShowNewProject(false)}
+        onClose={() => { setShowNewProject(false); setCreateError(null) }}
         title="Nouveau projet"
         size="md"
       >
+        {createError && (
+          <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-300">
+            {createError}
+          </div>
+        )}
         <ProjectForm
           onSubmit={handleCreateProject}
-          onCancel={() => setShowNewProject(false)}
+          onCancel={() => { setShowNewProject(false); setCreateError(null) }}
           loading={creating}
         />
       </Modal>

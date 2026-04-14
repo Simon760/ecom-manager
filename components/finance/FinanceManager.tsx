@@ -10,7 +10,7 @@ import {
   getRevenues, addRevenue, updateRevenue, deleteRevenue,
 } from '@/services/finance.service'
 import { Expense, Revenue, ExpenseFormData, RevenueFormData, Currency, EXPENSE_CATEGORY_LABELS } from '@/types'
-import { formatCurrency, formatDate, getCurrentMonthRange } from '@/lib/utils'
+import { formatCurrency, formatDate } from '@/lib/utils'
 import Card, { CardHeader } from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
@@ -51,21 +51,32 @@ export default function FinanceManager({ projectId, currency }: FinanceManagerPr
   const [editRevenue, setEditRevenue] = useState<Revenue | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<{ type: 'expense' | 'revenue'; id: string } | null>(null)
   const [saving, setSaving] = useState(false)
-
-  const monthRange = getCurrentMonthRange()
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
+    let cancelled = false
     const load = async () => {
-      const [exps, revs] = await Promise.all([
-        getExpenses(projectId, user.uid),
-        getRevenues(projectId, user.uid),
-      ])
-      setExpenses(exps)
-      setRevenues(revs)
-      setLoading(false)
+      try {
+        const [exps, revs] = await Promise.all([
+          getExpenses(projectId, user.uid),
+          getRevenues(projectId, user.uid),
+        ])
+        if (cancelled) return
+        setExpenses(exps)
+        setRevenues(revs)
+        setLoading(false)
+      } catch (err) {
+        if (!cancelled) {
+          console.error('Erreur chargement finance:', err)
+          setLoadError('Erreur lors du chargement des données financières.')
+          setLoading(false)
+        }
+      }
     }
     load()
+    return () => { cancelled = true }
   }, [projectId, user])
 
   // Calculs P&L
@@ -91,9 +102,19 @@ export default function FinanceManager({ projectId, currency }: FinanceManagerPr
   const pnlRows = Object.values(pnlByMonth).sort((a, b) => b.month.localeCompare(a.month))
 
   if (loading) return <Spinner size="md" className="mt-10 mx-auto" />
+  if (loadError) return (
+    <div className="mt-10 mx-auto max-w-md p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-300 text-center">
+      {loadError}
+    </div>
+  )
 
   return (
     <div className="space-y-5">
+      {saveError && (
+        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-300">
+          {saveError}
+        </div>
+      )}
       {/* Summary cards */}
       <div className="grid grid-cols-3 gap-4">
         <Card padding="md">
@@ -276,6 +297,7 @@ export default function FinanceManager({ projectId, currency }: FinanceManagerPr
         loading={saving}
         onSubmit={async (data) => {
           setSaving(true)
+          setSaveError(null)
           try {
             if (editExpense) {
               await updateExpense(editExpense.id, data)
@@ -286,6 +308,9 @@ export default function FinanceManager({ projectId, currency }: FinanceManagerPr
             }
             setShowExpenseModal(false)
             setEditExpense(null)
+          } catch (err) {
+            console.error('Erreur sauvegarde dépense:', err)
+            setSaveError('Erreur lors de l\'enregistrement de la dépense.')
           } finally { setSaving(false) }
         }}
       />
@@ -297,6 +322,7 @@ export default function FinanceManager({ projectId, currency }: FinanceManagerPr
         loading={saving}
         onSubmit={async (data) => {
           setSaving(true)
+          setSaveError(null)
           try {
             if (editRevenue) {
               await updateRevenue(editRevenue.id, data)
@@ -307,6 +333,9 @@ export default function FinanceManager({ projectId, currency }: FinanceManagerPr
             }
             setShowRevenueModal(false)
             setEditRevenue(null)
+          } catch (err) {
+            console.error('Erreur sauvegarde revenu:', err)
+            setSaveError('Erreur lors de l\'enregistrement du revenu.')
           } finally { setSaving(false) }
         }}
       />
@@ -319,6 +348,7 @@ export default function FinanceManager({ projectId, currency }: FinanceManagerPr
         onConfirm={async () => {
           if (!deleteTarget) return
           setSaving(true)
+          setSaveError(null)
           try {
             if (deleteTarget.type === 'expense') {
               await deleteExpense(deleteTarget.id)
@@ -328,6 +358,9 @@ export default function FinanceManager({ projectId, currency }: FinanceManagerPr
               setRevenues((prev) => prev.filter((r) => r.id !== deleteTarget.id))
             }
             setDeleteTarget(null)
+          } catch (err) {
+            console.error('Erreur suppression:', err)
+            setSaveError('Erreur lors de la suppression.')
           } finally { setSaving(false) }
         }}
       />

@@ -2,7 +2,7 @@
 // ============================================================
 // GLOBAL DASHBOARD — Agrégation de tous les projets
 // ============================================================
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { getProjects } from '@/services/projects.service'
 import { getDailyStats } from '@/services/tracker.service'
@@ -38,35 +38,54 @@ export default function GlobalDashboard() {
   const { user } = useAuth()
   const [data, setData] = useState<ProjectWithStats[]>([])
   const [loading, setLoading] = useState(true)
-  const days30 = getLastNDays(30)
+  const [loadError, setLoadError] = useState<string | null>(null)
+
+  // Calculé une seule fois via useMemo (ne change pas entre les renders)
+  const days30 = useMemo(() => getLastNDays(30), [])
 
   useEffect(() => {
     if (!user) return
+    let cancelled = false
+    const startDate = days30[0]
+    const endDate = days30[days30.length - 1]
     const load = async () => {
       try {
         const projects = await getProjects(user.uid)
+        if (cancelled) return
         const results = await Promise.all(
           projects.map(async (project) => {
             const stats = await getDailyStats(
               project.id,
               user.uid,
-              days30[0],
-              days30[days30.length - 1]
+              startDate,
+              endDate
             )
             return { project, stats, metrics: aggregateStats(stats) }
           })
         )
-        setData(results)
+        if (!cancelled) setData(results)
       } catch (err) {
-        console.error('Erreur chargement dashboard:', err)
+        if (!cancelled) {
+          console.error('Erreur chargement dashboard:', err)
+          setLoadError('Erreur lors du chargement du dashboard.')
+        }
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
     load()
-  }, [user]) // eslint-disable-line
+    return () => { cancelled = true }
+  }, [user, days30])
 
   if (loading) return <Spinner size="lg" className="mt-16 mx-auto" text="Chargement du dashboard…" />
+  if (loadError) return (
+    <div>
+      <TopBar title="Dashboard global" subtitle="Vue d'ensemble de tous vos projets" />
+      <div className="mt-8 mx-auto max-w-md p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-300 text-center">
+        {loadError}
+      </div>
+    </div>
+  )
 
   // Totaux globaux
   const total = data.reduce(

@@ -9,6 +9,7 @@ import { getCreatives, addCreative, updateCreative, deleteCreative } from '@/ser
 import { Creative, CreativeFormData, Currency } from '@/types'
 import { formatCurrency, formatMultiplier, formatNumber } from '@/lib/utils'
 import { safeDivide } from '@/lib/utils'
+import { CURRENCY_SYMBOLS } from '@/types'
 import Card, { CardHeader } from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
@@ -41,12 +42,22 @@ export default function CreativesManager({ projectId, currency }: CreativesManag
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [sortBy, setSortBy] = useState<'roas' | 'spend' | 'revenue'>('roas')
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
+    let cancelled = false
     getCreatives(projectId, user.uid)
-      .then(setCreatives)
-      .finally(() => setLoading(false))
+      .then((items) => { if (!cancelled) setCreatives(items) })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error('Erreur chargement créatives:', err)
+          setLoadError('Erreur lors du chargement des créatives.')
+        }
+      })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
   }, [projectId, user])
 
   const sorted = [...creatives].sort((a, b) => {
@@ -62,6 +73,7 @@ export default function CreativesManager({ projectId, currency }: CreativesManag
 
   const handleSubmit = async (data: CreativeFormData) => {
     setSaving(true)
+    setSaveError(null)
     try {
       if (editItem) {
         await updateCreative(editItem.id, data)
@@ -74,13 +86,26 @@ export default function CreativesManager({ projectId, currency }: CreativesManag
       }
       setShowModal(false)
       setEditItem(null)
+    } catch (err) {
+      console.error('Erreur sauvegarde créative:', err)
+      setSaveError('Erreur lors de l\'enregistrement de la créative.')
     } finally { setSaving(false) }
   }
 
   if (loading) return <Spinner size="md" className="mt-10 mx-auto" />
+  if (loadError) return (
+    <div className="mt-10 mx-auto max-w-md p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-300 text-center">
+      {loadError}
+    </div>
+  )
 
   return (
     <div className="space-y-5">
+      {saveError && (
+        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-300">
+          {saveError}
+        </div>
+      )}
       {/* Summary */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <SummaryCard label="Total spend" value={formatCurrency(totalSpend, currency)} />
@@ -185,7 +210,7 @@ export default function CreativesManager({ projectId, currency }: CreativesManag
           loading={saving}
           onSubmit={handleSubmit}
           onCancel={() => setShowModal(false)}
-          currencySymbol={currency === 'EUR' ? '€' : '$'}
+          currencySymbol={CURRENCY_SYMBOLS[currency]}
         />
       </Modal>
 
@@ -197,10 +222,14 @@ export default function CreativesManager({ projectId, currency }: CreativesManag
         onConfirm={async () => {
           if (!deleteId) return
           setSaving(true)
+          setSaveError(null)
           try {
             await deleteCreative(deleteId)
             setCreatives((prev) => prev.filter((c) => c.id !== deleteId))
             setDeleteId(null)
+          } catch (err) {
+            console.error('Erreur suppression créative:', err)
+            setSaveError('Erreur lors de la suppression.')
           } finally { setSaving(false) }
         }}
       />

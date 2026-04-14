@@ -19,6 +19,7 @@ import { getDailyStats, addDailyStat, updateDailyStat, deleteDailyStat } from '@
 import { Project, DailyStat, DailyStatFormData, CURRENCY_SYMBOLS } from '@/types'
 import { aggregateStats } from '@/lib/calculations'
 import { formatCurrency, formatMultiplier, formatPercent, formatNumber, getLastNDays, todayStr } from '@/lib/utils'
+import { computeDailyMetrics } from '@/lib/calculations'
 import { Plus, BarChart2 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
@@ -31,23 +32,36 @@ function TrackerContent() {
   const [stats, setStats] = useState<DailyStat[]>([])
   const [filteredStats, setFilteredStats] = useState<DailyStat[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [showAdd, setShowAdd] = useState(false)
   const [editStat, setEditStat] = useState<DailyStat | null>(null)
   const [deleteStat, setDeleteStat] = useState<DailyStat | null>(null)
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [dateRange, setDateRange] = useState({ start: getLastNDays(30)[0], end: todayStr() })
 
   useEffect(() => { if (!projectId) router.replace('/projects') }, [projectId, router])
 
   useEffect(() => {
     if (!user || !projectId) return
+    let cancelled = false
     const load = async () => {
-      const [projects, statData] = await Promise.all([getProjects(user.uid), getDailyStats(projectId, user.uid)])
-      const proj = projects.find((p) => p.id === projectId)
-      if (!proj) { router.replace('/projects'); return }
-      setProject(proj); setStats(statData); setLoading(false)
+      try {
+        const [projects, statData] = await Promise.all([getProjects(user.uid), getDailyStats(projectId, user.uid)])
+        if (cancelled) return
+        const proj = projects.find((p) => p.id === projectId)
+        if (!proj) { router.replace('/projects'); return }
+        setProject(proj); setStats(statData); setLoading(false)
+      } catch (err) {
+        if (!cancelled) {
+          console.error('Erreur chargement tracker:', err)
+          setLoadError('Erreur lors du chargement des données. Veuillez recharger la page.')
+          setLoading(false)
+        }
+      }
     }
     load()
+    return () => { cancelled = true }
   }, [user, projectId]) // eslint-disable-line
 
   useEffect(() => {
@@ -55,6 +69,11 @@ function TrackerContent() {
   }, [stats, dateRange])
 
   if (!projectId || loading) return <Spinner size="md" className="mt-16 mx-auto" />
+  if (loadError) return (
+    <div className="mt-16 mx-auto max-w-md p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-300 text-center">
+      {loadError}
+    </div>
+  )
   if (!project) return null
 
   const sym = CURRENCY_SYMBOLS[project.currency]
@@ -62,31 +81,53 @@ function TrackerContent() {
 
   const handleAdd = async (data: DailyStatFormData) => {
     setSaving(true)
+    setSaveError(null)
     try {
       const newStat = await addDailyStat(projectId, user!.uid, data)
       setStats((prev) => [newStat, ...prev]); setShowAdd(false)
+    } catch (err) {
+      console.error('Erreur ajout stat:', err)
+      setSaveError('Erreur lors de l\'enregistrement. Veuillez réessayer.')
     } finally { setSaving(false) }
   }
 
   const handleUpdate = async (data: DailyStatFormData) => {
     if (!editStat) return
     setSaving(true)
+    setSaveError(null)
     try {
       await updateDailyStat(editStat.id, data)
-      const m = { cpa: data.adSpend/(data.orders||1), aov: data.revenue/(data.orders||1), roas: data.adSpend>0?data.revenue/data.adSpend:0, cvr: data.sessions?(data.orders/data.sessions)*100:data.addToCart>0?(data.orders/data.addToCart)*100:0, mer: data.adSpend>0?data.revenue/data.adSpend:0, dailyProfit: data.revenue-data.adSpend-data.refunds }
-      setStats((prev) => prev.map((s) => s.id === editStat.id ? { ...s, ...data, ...m } : s)); setEditStat(null)
+      // Utilise computeDailyMetrics pour être cohérent avec le service
+      const metrics = computeDailyMetrics(data)
+      setStats((prev) => prev.map((s) => s.id === editStat.id ? { ...s, ...data, ...metrics } : s))
+      setEditStat(null)
+    } catch (err) {
+      console.error('Erreur mise à jour stat:', err)
+      setSaveError('Erreur lors de la mise à jour. Veuillez réessayer.')
     } finally { setSaving(false) }
   }
 
   const handleDelete = async () => {
     if (!deleteStat) return
     setSaving(true)
-    try { await deleteDailyStat(deleteStat.id); setStats((prev) => prev.filter((s) => s.id !== deleteStat.id)); setDeleteStat(null) }
-    finally { setSaving(false) }
+    setSaveError(null)
+    try {
+      await deleteDailyStat(deleteStat.id)
+      setStats((prev) => prev.filter((s) => s.id !== deleteStat.id))
+      setDeleteStat(null)
+    } catch (err) {
+      console.error('Erreur suppression stat:', err)
+      setSaveError('Erreur lors de la suppression. Veuillez réessayer.')
+    } finally { setSaving(false) }
   }
 
   return (
     <div>
+      {saveError && (
+        <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-300">
+          {saveError}
+        </div>
+      )}
       <TopBar title={project.name} subtitle="Tracker journalier"
         badge={<Badge variant="violet">{sym} {project.currency}</Badge>}
         actions={<Button icon={<Plus size={14} />} size="sm" onClick={() => setShowAdd(true)}>Ajouter</Button>} />

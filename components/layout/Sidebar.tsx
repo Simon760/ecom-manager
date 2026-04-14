@@ -2,10 +2,10 @@
 // ============================================================
 // SIDEBAR — Navigation principale de l'application
 // ============================================================
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useContext } from 'react'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth, ProjectRefreshContext } from '@/contexts/AuthContext'
 import { getProjects } from '@/services/projects.service'
 import { Project } from '@/types'
 import { cn } from '@/lib/utils'
@@ -41,40 +41,33 @@ interface SidebarProps {
   onNewProject: () => void
 }
 
-export default function Sidebar({ onNewProject }: SidebarProps) {
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const { user, signOut } = useAuth()
-  const [projects, setProjects] = useState<Project[]>([])
-  const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null)
-  const [mobileOpen, setMobileOpen] = useState(false)
-  const [loading, setLoading] = useState(true)
+interface SidebarContentProps {
+  projects: Project[]
+  loading: boolean
+  expandedProjectId: string | null
+  currentProjectId: string | null
+  pathname: string
+  onNewProject: () => void
+  onToggleProject: (id: string) => void
+  user: { displayName?: string | null; email?: string | null } | null
+  signOut: () => void
+}
 
-  const currentProjectId = searchParams.get('projectId')
-
-  // Charge les projets
-  useEffect(() => {
-    if (!user) return
-    getProjects(user.uid)
-      .then((ps) => {
-        setProjects(ps)
-        // Auto-expand le projet actif
-        if (currentProjectId) setExpandedProjectId(currentProjectId)
-        else if (ps.length > 0 && !expandedProjectId) setExpandedProjectId(ps[0].id)
-      })
-      .finally(() => setLoading(false))
-  }, [user, currentProjectId]) // eslint-disable-line
-
-  // Ferme le sidebar mobile sur navigation
-  useEffect(() => setMobileOpen(false), [pathname, currentProjectId])
-
+// SidebarContent est défini en dehors du composant principal pour éviter les re-montages
+function SidebarContent({
+  projects,
+  loading,
+  expandedProjectId,
+  currentProjectId,
+  pathname,
+  onNewProject,
+  onToggleProject,
+  user,
+  signOut,
+}: SidebarContentProps) {
   const isProjectActive = (projectId: string) => currentProjectId === projectId
-  const isNavActive = (href: string) => {
-    const cleanPath = pathname.replace(/\/$/, '')
-    return cleanPath === href && currentProjectId === expandedProjectId
-  }
 
-  const SidebarContent = () => (
+  return (
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className="px-5 py-4 border-b border-zinc-800">
@@ -135,11 +128,7 @@ export default function Sidebar({ onNewProject }: SidebarProps) {
               <div key={project.id}>
                 {/* Project header */}
                 <button
-                  onClick={() =>
-                    setExpandedProjectId(
-                      expandedProjectId === project.id ? null : project.id
-                    )
-                  }
+                  onClick={() => onToggleProject(project.id)}
                   className={cn(
                     'w-full flex items-center justify-between gap-2 px-2 py-2 rounded-lg text-xs font-medium transition-colors',
                     isProjectActive(project.id)
@@ -207,6 +196,63 @@ export default function Sidebar({ onNewProject }: SidebarProps) {
       </div>
     </div>
   )
+}
+
+export default function Sidebar({ onNewProject }: SidebarProps) {
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const { user, signOut } = useAuth()
+  const { refreshKey } = useContext(ProjectRefreshContext)
+  const [projects, setProjects] = useState<Project[]>([])
+  const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null)
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const [loading, setLoading] = useState(true)
+
+  const currentProjectId = searchParams.get('projectId')
+
+  // Charge les projets — se redéclenche aussi quand refreshKey change (création depuis AppLayout)
+  useEffect(() => {
+    if (!user) return
+    let cancelled = false
+    setLoading(true)
+    getProjects(user.uid)
+      .then((ps) => {
+        if (cancelled) return
+        setProjects(ps)
+        // Auto-expand le projet actif
+        if (currentProjectId) {
+          setExpandedProjectId(currentProjectId)
+        } else if (ps.length > 0) {
+          setExpandedProjectId((prev) => prev ?? ps[0].id)
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) console.error('Erreur chargement projets sidebar:', err)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [user, currentProjectId, refreshKey]) // refreshKey force le rechargement après création
+
+  // Ferme le sidebar mobile sur navigation
+  useEffect(() => setMobileOpen(false), [pathname, currentProjectId])
+
+  const handleToggleProject = (projectId: string) => {
+    setExpandedProjectId((prev) => (prev === projectId ? null : projectId))
+  }
+
+  const contentProps: SidebarContentProps = {
+    projects,
+    loading,
+    expandedProjectId,
+    currentProjectId,
+    pathname,
+    onNewProject,
+    onToggleProject: handleToggleProject,
+    user,
+    signOut,
+  }
 
   return (
     <>
@@ -239,12 +285,12 @@ export default function Sidebar({ onNewProject }: SidebarProps) {
         >
           <X size={16} />
         </button>
-        <SidebarContent />
+        <SidebarContent {...contentProps} />
       </aside>
 
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex flex-col w-56 shrink-0 bg-zinc-950 border-r border-zinc-800 h-screen sticky top-0">
-        <SidebarContent />
+        <SidebarContent {...contentProps} />
       </aside>
     </>
   )

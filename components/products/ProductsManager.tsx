@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { getProducts, addProduct, updateProduct, deleteProduct } from '@/services/products.service'
 import { Product, ProductFormData, Currency } from '@/types'
 import { formatCurrency, formatPercent, formatNumber } from '@/lib/utils'
+import { CURRENCY_SYMBOLS } from '@/types'
 import Card, { CardHeader } from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
@@ -32,12 +33,22 @@ export default function ProductsManager({ projectId, currency }: ProductsManager
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [sortBy, setSortBy] = useState<'revenue' | 'orders' | 'margin'>('revenue')
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
+    let cancelled = false
     getProducts(projectId, user.uid)
-      .then(setProducts)
-      .finally(() => setLoading(false))
+      .then((items) => { if (!cancelled) setProducts(items) })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error('Erreur chargement produits:', err)
+          setLoadError('Erreur lors du chargement des produits.')
+        }
+      })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
   }, [projectId, user])
 
   const sorted = [...products].sort((a, b) => {
@@ -51,10 +62,11 @@ export default function ProductsManager({ projectId, currency }: ProductsManager
 
   const handleSubmit = async (data: ProductFormData) => {
     setSaving(true)
+    setSaveError(null)
     try {
       if (editItem) {
         await updateProduct(editItem.id, data)
-        // Recalc localement
+        // Recalc localement (cohérent avec products.service.ts)
         const aov = data.orders > 0 ? data.revenue / data.orders : 0
         const netRev = aov * (1 - data.refundRate / 100)
         const margin = netRev > 0 ? ((netRev - data.cogs) / netRev) * 100 : 0
@@ -65,13 +77,26 @@ export default function ProductsManager({ projectId, currency }: ProductsManager
       }
       setShowModal(false)
       setEditItem(null)
+    } catch (err) {
+      console.error('Erreur sauvegarde produit:', err)
+      setSaveError('Erreur lors de l\'enregistrement du produit.')
     } finally { setSaving(false) }
   }
 
   if (loading) return <Spinner size="md" className="mt-10 mx-auto" />
+  if (loadError) return (
+    <div className="mt-10 mx-auto max-w-md p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-300 text-center">
+      {loadError}
+    </div>
+  )
 
   return (
     <div className="space-y-5">
+      {saveError && (
+        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-300">
+          {saveError}
+        </div>
+      )}
       {/* Summary */}
       <div className="grid grid-cols-3 gap-4">
         <Card padding="sm">
@@ -175,7 +200,7 @@ export default function ProductsManager({ projectId, currency }: ProductsManager
           loading={saving}
           onSubmit={handleSubmit}
           onCancel={() => setShowModal(false)}
-          currencySymbol={currency === 'EUR' ? '€' : '$'}
+          currencySymbol={CURRENCY_SYMBOLS[currency]}
         />
       </Modal>
 
@@ -187,10 +212,14 @@ export default function ProductsManager({ projectId, currency }: ProductsManager
         onConfirm={async () => {
           if (!deleteId) return
           setSaving(true)
+          setSaveError(null)
           try {
             await deleteProduct(deleteId)
             setProducts((prev) => prev.filter((p) => p.id !== deleteId))
             setDeleteId(null)
+          } catch (err) {
+            console.error('Erreur suppression produit:', err)
+            setSaveError('Erreur lors de la suppression.')
           } finally { setSaving(false) }
         }}
       />

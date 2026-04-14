@@ -13,7 +13,8 @@ import {
   variationColor,
   variationArrow,
 } from '@/lib/utils'
-import { calcVariation, calcSevenDayAverages } from '@/lib/calculations'
+import { calcVariation } from '@/lib/utils'
+import { calcSevenDayAverages } from '@/lib/calculations'
 import Badge from '@/components/ui/Badge'
 import { Pencil, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
