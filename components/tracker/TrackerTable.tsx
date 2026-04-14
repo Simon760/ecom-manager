@@ -119,7 +119,17 @@ export default function TrackerTable({ stats, currency, onEdit, onDelete, breakE
 
                 <td className="px-3 py-3 text-zinc-300">{stat.orders}</td>
 
-                <td className="px-3 py-3 text-zinc-300">{formatCurrency(stat.adSpend, currency)}</td>
+                <td className="px-3 py-3 text-zinc-300">
+                  {stat.channelBreakdowns?.length ? (
+                    <span
+                      className="cursor-help"
+                      title={stat.channelBreakdowns.map((c) => `${c.label}: ${formatCurrency(c.adSpend, currency)}`).join('\n')}
+                    >
+                      {formatCurrency(stat.adSpend, currency)}
+                      <span className="ml-1 text-[10px] text-violet-400/70">▾</span>
+                    </span>
+                  ) : formatCurrency(stat.adSpend, currency)}
+                </td>
 
                 <td className="px-3 py-3">
                   <span className={cn('font-semibold', roasClass(stat.roas, breakEvenROAS))}>

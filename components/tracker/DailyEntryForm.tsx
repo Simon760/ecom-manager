@@ -2,14 +2,17 @@
 // ============================================================
 // DAILY ENTRY FORM — Formulaire de saisie journalière
 // ============================================================
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
-import { DailyStatFormData, CalculatorOffer, OfferBreakdownItem } from '@/types'
+import {
+  DailyStatFormData, CalculatorOffer, OfferBreakdownItem,
+  ChannelBreakdownItem, CHANNEL_OPTIONS,
+} from '@/types'
 import { todayStr, formatCurrency } from '@/lib/utils'
 import { Textarea } from '@/components/ui/Input'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface DailyEntryFormProps {
@@ -34,6 +37,7 @@ export default function DailyEntryForm({
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<DailyStatFormData>({
     defaultValues: {
@@ -50,7 +54,7 @@ export default function DailyEntryForm({
     },
   })
 
-  // Lignes COGS multi-offres (gérées en dehors de react-hook-form)
+  // ── COGS multi-offres ──
   const [lines, setLines] = useState<OfferBreakdownItem[]>(() => {
     if (defaultValues?.offerBreakdowns?.length) return defaultValues.offerBreakdowns
     return []
@@ -61,18 +65,10 @@ export default function DailyEntryForm({
     const first = offers[0]
     setLines((prev) => [
       ...prev,
-      {
-        offerId: first.id,
-        offerName: first.name,
-        orders: 0,
-        cogsPerOrder: first.outputs.totalVariableCosts,
-        cogsTotal: 0,
-      },
+      { offerId: first.id, offerName: first.name, orders: 0, cogsPerOrder: first.outputs.totalVariableCosts, cogsTotal: 0 },
     ])
   }
-
   const removeLine = (idx: number) => setLines((prev) => prev.filter((_, i) => i !== idx))
-
   const updateLine = (idx: number, field: 'offerId' | 'orders', value: string | number) => {
     setLines((prev) => {
       const next = [...prev]
@@ -80,8 +76,7 @@ export default function DailyEntryForm({
       if (field === 'offerId') {
         const offer = offers.find((o) => o.id === value)
         if (offer) {
-          line.offerId = offer.id
-          line.offerName = offer.name
+          line.offerId = offer.id; line.offerName = offer.name
           line.cogsPerOrder = offer.outputs.totalVariableCosts
           line.cogsTotal = Math.round(offer.outputs.totalVariableCosts * line.orders * 100) / 100
         }
@@ -94,9 +89,38 @@ export default function DailyEntryForm({
       return next
     })
   }
-
   const totalCOGS = lines.reduce((s, l) => s + l.cogsTotal, 0)
   const totalCOGSOrders = lines.reduce((s, l) => s + l.orders, 0)
+
+  // ── Canaux pub ──
+  const [channelLines, setChannelLines] = useState<ChannelBreakdownItem[]>(() => {
+    if (defaultValues?.channelBreakdowns?.length) return defaultValues.channelBreakdowns
+    return []
+  })
+  const [showChannels, setShowChannels] = useState(() => !!(defaultValues?.channelBreakdowns?.length))
+
+  const addChannelLine = () => {
+    setChannelLines((prev) => [...prev, { channel: 'meta', label: 'Meta Ads', adSpend: 0 }])
+  }
+  const removeChannelLine = (idx: number) => setChannelLines((prev) => prev.filter((_, i) => i !== idx))
+  const updateChannelLine = (idx: number, field: 'channel' | 'adSpend', value: string | number) => {
+    setChannelLines((prev) => {
+      const next = [...prev]
+      if (field === 'channel') {
+        const opt = CHANNEL_OPTIONS.find((c) => c.key === value)
+        next[idx] = { ...next[idx], channel: value as ChannelBreakdownItem['channel'], label: opt?.label ?? 'Autre' }
+      } else {
+        next[idx] = { ...next[idx], adSpend: Number(value) || 0 }
+      }
+      return next
+    })
+  }
+  const totalChannelSpend = channelLines.reduce((s, l) => s + l.adSpend, 0)
+
+  // Sync adSpend field when channel lines change
+  useEffect(() => {
+    if (channelLines.length > 0) setValue('adSpend', Math.round(totalChannelSpend * 100) / 100)
+  }, [channelLines, totalChannelSpend, setValue])
 
   const numericField = (name: keyof DailyStatFormData, required = true) => ({
     valueAsNumber: true,
@@ -107,8 +131,10 @@ export default function DailyEntryForm({
   const handleFormSubmit = async (data: DailyStatFormData) => {
     const payload: DailyStatFormData = {
       ...data,
+      adSpend: channelLines.length > 0 ? Math.round(totalChannelSpend * 100) / 100 : data.adSpend,
       offerBreakdowns: lines.length > 0 ? lines : undefined,
       cogsTotal: lines.length > 0 ? Math.round(totalCOGS * 100) / 100 : undefined,
+      channelBreakdowns: channelLines.length > 0 ? channelLines : undefined,
     }
     await onSubmit(payload)
   }
@@ -136,15 +162,82 @@ export default function DailyEntryForm({
 
       {/* Ad Spend + Refunds */}
       <div className="grid grid-cols-2 gap-3">
-        <Input label="Dépense pub" type="number" step="0.01" required
-          prefix={currencySymbol} error={errors.adSpend?.message}
-          {...register('adSpend', numericField('adSpend'))}
-        />
+        <div>
+          <Input label="Dépense pub" type="number" step="0.01" required
+            prefix={currencySymbol} error={errors.adSpend?.message}
+            readOnly={channelLines.length > 0}
+            hint={channelLines.length > 0 ? `Total des canaux` : undefined}
+            className={channelLines.length > 0 ? 'opacity-60 cursor-not-allowed' : ''}
+            {...register('adSpend', numericField('adSpend'))}
+          />
+          {/* Toggle canaux */}
+          <button
+            type="button"
+            onClick={() => { setShowChannels((v) => !v); if (!showChannels && channelLines.length === 0) addChannelLine() }}
+            className="mt-1.5 flex items-center gap-1 text-[10px] text-violet-400 hover:text-violet-300 transition-colors"
+          >
+            {showChannels ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+            {showChannels ? 'Masquer les canaux' : 'Détailler par canal'}
+          </button>
+        </div>
         <Input label="Remboursements" type="number" step="0.01"
           prefix={currencySymbol} error={errors.refunds?.message}
           {...register('refunds', numericField('refunds'))}
         />
       </div>
+
+      {/* ── Canaux pub ── */}
+      {showChannels && (
+        <div className="rounded-lg border border-violet-500/20 bg-violet-500/5 p-3 space-y-2 -mt-1">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold text-violet-300">Détail par canal</p>
+            <button type="button" onClick={addChannelLine}
+              className="flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300 transition-colors">
+              <Plus size={12} /> Ajouter
+            </button>
+          </div>
+
+          {channelLines.length > 0 && (
+            <div className="space-y-1.5">
+              <div className="grid grid-cols-[1fr_100px_20px] gap-2 text-[10px] text-zinc-600 px-1">
+                <span>Canal</span><span>Dépense</span><span />
+              </div>
+              {channelLines.map((ch, idx) => (
+                <div key={idx} className="grid grid-cols-[1fr_100px_20px] gap-2 items-center">
+                  <select
+                    value={ch.channel}
+                    onChange={(e) => updateChannelLine(idx, 'channel', e.target.value)}
+                    className="rounded-lg border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 py-1.5 px-2 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                  >
+                    {CHANNEL_OPTIONS.map((o) => (
+                      <option key={o.key} value={o.key}>{o.label}</option>
+                    ))}
+                  </select>
+                  <div className="relative flex items-center">
+                    <span className="absolute left-2 text-xs text-zinc-500 pointer-events-none">{currencySymbol}</span>
+                    <input type="number" min={0} step="0.01"
+                      value={ch.adSpend || ''}
+                      onChange={(e) => updateChannelLine(idx, 'adSpend', e.target.value)}
+                      placeholder="0"
+                      className="w-full rounded-lg border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 py-1.5 pl-6 pr-2 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                    />
+                  </div>
+                  <button type="button" onClick={() => removeChannelLine(idx)}
+                    className="text-zinc-600 hover:text-red-400 transition-colors">
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              ))}
+              <div className="border-t border-violet-500/20 pt-1.5 flex items-center justify-between">
+                <span className="text-[10px] text-zinc-500">Total pub</span>
+                <span className="text-xs font-bold text-violet-300">
+                  {currencySymbol}{totalChannelSpend.toFixed(2)}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Add to Cart + Checkout */}
       <div className="grid grid-cols-2 gap-3">
@@ -176,11 +269,8 @@ export default function DailyEntryForm({
             </p>
           </div>
           {offers.length > 0 && (
-            <button
-              type="button"
-              onClick={addLine}
-              className="flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300 transition-colors"
-            >
+            <button type="button" onClick={addLine}
+              className="flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300 transition-colors">
               <Plus size={12} /> Ajouter une offre
             </button>
           )}
@@ -188,61 +278,31 @@ export default function DailyEntryForm({
 
         {lines.length > 0 && (
           <div className="space-y-2">
-            {/* Header */}
             <div className="grid grid-cols-[1fr_80px_80px_24px] gap-2 text-[10px] text-zinc-600 px-1">
-              <span>Offre</span>
-              <span>Cmds</span>
-              <span>COGS</span>
-              <span />
+              <span>Offre</span><span>Cmds</span><span>COGS</span><span />
             </div>
-
             {lines.map((line, idx) => (
               <div key={idx} className="grid grid-cols-[1fr_80px_80px_24px] gap-2 items-center">
-                {/* Offre selector */}
-                <select
-                  value={line.offerId}
+                <select value={line.offerId}
                   onChange={(e) => updateLine(idx, 'offerId', e.target.value)}
-                  className="rounded-lg border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 py-1.5 px-2 focus:outline-none focus:ring-2 focus:ring-violet-500/50 truncate"
-                >
-                  {offers.map((o) => (
-                    <option key={o.id} value={o.id}>{o.name}</option>
-                  ))}
+                  className="rounded-lg border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 py-1.5 px-2 focus:outline-none focus:ring-2 focus:ring-violet-500/50 truncate">
+                  {offers.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
                 </select>
-
-                {/* Nombre de commandes */}
-                <input
-                  type="number"
-                  min={0}
-                  step={1}
+                <input type="number" min={0} step={1}
                   value={line.orders || ''}
                   onChange={(e) => updateLine(idx, 'orders', e.target.value)}
                   placeholder="0"
                   className="rounded-lg border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 py-1.5 px-2 focus:outline-none focus:ring-2 focus:ring-violet-500/50 w-full"
                 />
-
-                {/* COGS calculé */}
-                <div className={cn(
-                  'text-xs font-medium text-right',
-                  line.cogsTotal > 0 ? 'text-amber-400' : 'text-zinc-600'
-                )}>
-                  {line.cogsTotal > 0
-                    ? `−${formatCurrency(line.cogsTotal, currency as 'EUR')}`
-                    : '—'
-                  }
+                <div className={cn('text-xs font-medium text-right', line.cogsTotal > 0 ? 'text-amber-400' : 'text-zinc-600')}>
+                  {line.cogsTotal > 0 ? `−${formatCurrency(line.cogsTotal, currency as 'EUR')}` : '—'}
                 </div>
-
-                {/* Supprimer */}
-                <button
-                  type="button"
-                  onClick={() => removeLine(idx)}
-                  className="text-zinc-600 hover:text-red-400 transition-colors flex items-center justify-center"
-                >
+                <button type="button" onClick={() => removeLine(idx)}
+                  className="text-zinc-600 hover:text-red-400 transition-colors flex items-center justify-center">
                   <Trash2 size={12} />
                 </button>
               </div>
             ))}
-
-            {/* Sous-détail par ligne */}
             <div className="mt-1 space-y-0.5 pl-1">
               {lines.map((line, idx) => line.orders > 0 && (
                 <p key={idx} className="text-[10px] text-zinc-600">
@@ -250,15 +310,9 @@ export default function DailyEntryForm({
                 </p>
               ))}
             </div>
-
-            {/* Total COGS */}
             <div className="border-t border-zinc-700 pt-2 flex items-center justify-between">
-              <span className="text-xs text-zinc-400">
-                COGS total ({totalCOGSOrders} commandes)
-              </span>
-              <span className="text-sm font-bold text-amber-400">
-                − {formatCurrency(totalCOGS, currency as 'EUR')}
-              </span>
+              <span className="text-xs text-zinc-400">COGS total ({totalCOGSOrders} commandes)</span>
+              <span className="text-sm font-bold text-amber-400">− {formatCurrency(totalCOGS, currency as 'EUR')}</span>
             </div>
           </div>
         )}
@@ -277,9 +331,7 @@ export default function DailyEntryForm({
       />
 
       <div className="flex gap-3 pt-2">
-        <Button type="button" variant="secondary" fullWidth onClick={onCancel} disabled={loading}>
-          Annuler
-        </Button>
+        <Button type="button" variant="secondary" fullWidth onClick={onCancel} disabled={loading}>Annuler</Button>
         <Button type="submit" fullWidth loading={loading}>
           {defaultValues?.date ? 'Mettre à jour' : 'Ajouter la journée'}
         </Button>

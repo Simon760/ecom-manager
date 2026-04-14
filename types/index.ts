@@ -57,6 +57,8 @@ export interface DailyStat {
   // COGS multi-offres (optionnel)
   offerBreakdowns?: OfferBreakdownItem[]
   cogsTotal?: number
+  // Canaux publicitaires (optionnel)
+  channelBreakdowns?: ChannelBreakdownItem[]
   // Métriques calculées (stockées pour perf)
   cpa: number
   aov: number
@@ -76,6 +78,21 @@ export interface OfferBreakdownItem {
   cogsTotal: number     // cogsPerOrder × orders
 }
 
+export type AdChannel = 'meta' | 'google' | 'tiktok' | 'other'
+
+export interface ChannelBreakdownItem {
+  channel: AdChannel
+  label: string    // "Meta Ads", "Google Ads", etc.
+  adSpend: number
+}
+
+export const CHANNEL_OPTIONS: { key: AdChannel; label: string }[] = [
+  { key: 'meta',   label: 'Meta Ads' },
+  { key: 'google', label: 'Google Ads' },
+  { key: 'tiktok', label: 'TikTok Ads' },
+  { key: 'other',  label: 'Autre' },
+]
+
 export interface DailyStatFormData {
   date: string
   revenue: number
@@ -86,8 +103,9 @@ export interface DailyStatFormData {
   sessions?: number
   refunds: number
   notes?: string
-  offerBreakdowns?: OfferBreakdownItem[]  // détail COGS par offre
-  cogsTotal?: number                       // somme des cogsTotal des lignes
+  offerBreakdowns?: OfferBreakdownItem[]      // détail COGS par offre
+  cogsTotal?: number                           // somme des cogsTotal des lignes
+  channelBreakdowns?: ChannelBreakdownItem[]  // détail dépense pub par canal
 }
 
 // --- Dépenses (Finance) ---

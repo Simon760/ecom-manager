@@ -4,6 +4,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import TopBar from '@/components/layout/TopBar'
 import DailyEntryForm from '@/components/tracker/DailyEntryForm'
+import CSVImportModal from '@/components/tracker/CSVImportModal'
 import TrackerTable from '@/components/tracker/TrackerTable'
 import TrackerCharts from '@/components/tracker/TrackerCharts'
 import DateFilter from '@/components/tracker/DateFilter'
@@ -20,7 +21,7 @@ import { getOffers } from '@/services/calculator.service'
 import { Project, DailyStat, DailyStatFormData, CalculatorOffer, CURRENCY_SYMBOLS } from '@/types'
 import { aggregateStats, computeDailyMetrics } from '@/lib/calculations'
 import { formatCurrency, formatMultiplier, formatPercent, formatNumber, getLastNDays, todayStr } from '@/lib/utils'
-import { Plus, BarChart2 } from 'lucide-react'
+import { Plus, BarChart2, Upload } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
 function TrackerContent() {
@@ -37,6 +38,7 @@ function TrackerContent() {
   const [showAdd, setShowAdd] = useState(false)
   const [editStat, setEditStat] = useState<DailyStat | null>(null)
   const [deleteStat, setDeleteStat] = useState<DailyStat | null>(null)
+  const [showImport, setShowImport] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [dateRange, setDateRange] = useState({ start: getLastNDays(30)[0], end: todayStr() })
@@ -115,6 +117,18 @@ function TrackerContent() {
     } finally { setSaving(false) }
   }
 
+  const handleBatchImport = async (rows: DailyStatFormData[]) => {
+    setSaving(true); setSaveError(null)
+    try {
+      const newStats = await Promise.all(rows.map((row) => addDailyStat(projectId!, user!.uid, row)))
+      setStats((prev) => [...newStats, ...prev])
+      setShowImport(false)
+    } catch (err) {
+      console.error('Erreur import CSV:', err)
+      setSaveError('Erreur lors de l\'import CSV.')
+    } finally { setSaving(false) }
+  }
+
   const handleDelete = async () => {
     if (!deleteStat) return
     setSaving(true); setSaveError(null)
@@ -137,7 +151,12 @@ function TrackerContent() {
       )}
       <TopBar title={project.name} subtitle="Tracker journalier"
         badge={<Badge variant="violet">{sym} {project.currency}</Badge>}
-        actions={<Button icon={<Plus size={14} />} size="sm" onClick={() => setShowAdd(true)}>Ajouter</Button>} />
+        actions={
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" icon={<Upload size={14} />} size="sm" onClick={() => setShowImport(true)}>Import CSV</Button>
+            <Button icon={<Plus size={14} />} size="sm" onClick={() => setShowAdd(true)}>Ajouter</Button>
+          </div>
+        } />
 
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-5">
@@ -184,6 +203,14 @@ function TrackerContent() {
             offers={offers}
           />
         )}
+      </Modal>
+      <Modal isOpen={showImport} onClose={() => setShowImport(false)} title="Importer depuis un CSV" size="md">
+        <CSVImportModal
+          onImport={handleBatchImport}
+          onCancel={() => setShowImport(false)}
+          loading={saving}
+          currencySymbol={sym}
+        />
       </Modal>
       <ConfirmDialog isOpen={!!deleteStat} onClose={() => setDeleteStat(null)}
         message={`Supprimer les données du ${deleteStat?.date} ?`}

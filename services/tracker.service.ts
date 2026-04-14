@@ -40,6 +40,7 @@ function toDailyStat(id: string, data: Record<string, unknown>): DailyStat {
     dailyProfit: (data.dailyProfit as number) ?? 0,
     offerBreakdowns: (data.offerBreakdowns as unknown) ?? undefined,
     cogsTotal: (data.cogsTotal as number) ?? undefined,
+    channelBreakdowns: (data.channelBreakdowns as unknown) ?? undefined,
     createdAt: (data.createdAt as Timestamp)?.toDate() ?? new Date(),
     updatedAt: (data.updatedAt as Timestamp)?.toDate() ?? new Date(),
   }

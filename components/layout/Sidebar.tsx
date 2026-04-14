@@ -15,9 +15,7 @@ import {
   BarChart2,
   Calculator,
   Wallet,
-  Palette,
   Package,
-  TrendingUp,
   ChevronDown,
   ChevronRight,
   Plus,
@@ -32,9 +30,7 @@ const projectNavItems = [
   { href: '/tracker',    label: 'Tracker',       icon: BarChart2 },
   { href: '/calculator', label: 'Calculateur',   icon: Calculator },
   { href: '/finance',    label: 'Finance P&L',   icon: Wallet },
-  { href: '/creatives',  label: 'Créatives',     icon: Palette },
   { href: '/products',   label: 'Produits',      icon: Package },
-  { href: '/forecast',   label: 'Forecast',      icon: TrendingUp },
 ]
 
 interface SidebarProps {
