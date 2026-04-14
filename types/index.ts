@@ -54,6 +54,10 @@ export interface DailyStat {
   sessions?: number
   refunds: number
   notes?: string
+  // COGS depuis une offre calculateur (optionnel)
+  offerId?: string
+  offerName?: string
+  cogsTotal?: number   // COGS total de la journée (cogsPerOrder × orders)
   // Métriques calculées (stockées pour perf)
   cpa: number
   aov: number
@@ -75,6 +79,9 @@ export interface DailyStatFormData {
   sessions?: number
   refunds: number
   notes?: string
+  offerId?: string
+  offerName?: string
+  cogsTotal?: number
 }
 
 // --- Dépenses (Finance) ---

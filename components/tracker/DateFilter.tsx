@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 import { format, subDays, startOfMonth } from 'date-fns'
 import Input from '@/components/ui/Input'
 
-type Preset = '7d' | '14d' | '30d' | '90d' | 'mtd' | 'custom'
+type Preset = '1d' | '7d' | '14d' | '30d' | '90d' | 'mtd' | 'custom'
 
 interface DateRange {
   start: string
@@ -20,6 +20,7 @@ interface DateFilterProps {
 }
 
 const PRESETS: { key: Preset; label: string }[] = [
+  { key: '1d', label: 'Auj.' },
   { key: '7d', label: '7j' },
   { key: '14d', label: '14j' },
   { key: '30d', label: '30j' },
@@ -32,6 +33,7 @@ function getPresetRange(preset: Exclude<Preset, 'custom'>): DateRange {
   const today = new Date()
   const fmt = (d: Date) => format(d, 'yyyy-MM-dd')
   switch (preset) {
+    case '1d':  return { start: fmt(today), end: fmt(today) }
     case '7d':  return { start: fmt(subDays(today, 6)), end: fmt(today) }
     case '14d': return { start: fmt(subDays(today, 13)), end: fmt(today) }
     case '30d': return { start: fmt(subDays(today, 29)), end: fmt(today) }

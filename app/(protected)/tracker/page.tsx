@@ -16,10 +16,10 @@ import Spinner from '@/components/ui/Spinner'
 import EmptyState from '@/components/ui/EmptyState'
 import { getProjects } from '@/services/projects.service'
 import { getDailyStats, addDailyStat, updateDailyStat, deleteDailyStat } from '@/services/tracker.service'
-import { Project, DailyStat, DailyStatFormData, CURRENCY_SYMBOLS } from '@/types'
-import { aggregateStats } from '@/lib/calculations'
+import { getOffers } from '@/services/calculator.service'
+import { Project, DailyStat, DailyStatFormData, CalculatorOffer, CURRENCY_SYMBOLS } from '@/types'
+import { aggregateStats, computeDailyMetrics } from '@/lib/calculations'
 import { formatCurrency, formatMultiplier, formatPercent, formatNumber, getLastNDays, todayStr } from '@/lib/utils'
-import { computeDailyMetrics } from '@/lib/calculations'
 import { Plus, BarChart2 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
@@ -31,6 +31,7 @@ function TrackerContent() {
   const [project, setProject] = useState<Project | null>(null)
   const [stats, setStats] = useState<DailyStat[]>([])
   const [filteredStats, setFilteredStats] = useState<DailyStat[]>([])
+  const [offers, setOffers] = useState<CalculatorOffer[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [showAdd, setShowAdd] = useState(false)
@@ -47,15 +48,22 @@ function TrackerContent() {
     let cancelled = false
     const load = async () => {
       try {
-        const [projects, statData] = await Promise.all([getProjects(user.uid), getDailyStats(projectId, user.uid)])
+        const [projects, statData, offerData] = await Promise.all([
+          getProjects(user.uid),
+          getDailyStats(projectId, user.uid),
+          getOffers(user.uid, projectId),
+        ])
         if (cancelled) return
         const proj = projects.find((p) => p.id === projectId)
         if (!proj) { router.replace('/projects'); return }
-        setProject(proj); setStats(statData); setLoading(false)
+        setProject(proj)
+        setStats(statData)
+        setOffers(offerData)
+        setLoading(false)
       } catch (err) {
         if (!cancelled) {
           console.error('Erreur chargement tracker:', err)
-          setLoadError('Erreur lors du chargement des données. Veuillez recharger la page.')
+          setLoadError('Erreur lors du chargement. Veuillez recharger la page.')
           setLoading(false)
         }
       }
@@ -79,45 +87,44 @@ function TrackerContent() {
   const sym = CURRENCY_SYMBOLS[project.currency]
   const metrics = aggregateStats(filteredStats)
 
+  // BE ROAS depuis la première offre (référence) pour le coloring
+  const beROAS = offers[0]?.outputs.breakEvenROAS
+
   const handleAdd = async (data: DailyStatFormData) => {
-    setSaving(true)
-    setSaveError(null)
+    setSaving(true); setSaveError(null)
     try {
       const newStat = await addDailyStat(projectId, user!.uid, data)
       setStats((prev) => [newStat, ...prev]); setShowAdd(false)
     } catch (err) {
       console.error('Erreur ajout stat:', err)
-      setSaveError('Erreur lors de l\'enregistrement. Veuillez réessayer.')
+      setSaveError('Erreur lors de l\'enregistrement.')
     } finally { setSaving(false) }
   }
 
   const handleUpdate = async (data: DailyStatFormData) => {
     if (!editStat) return
-    setSaving(true)
-    setSaveError(null)
+    setSaving(true); setSaveError(null)
     try {
       await updateDailyStat(editStat.id, data)
-      // Utilise computeDailyMetrics pour être cohérent avec le service
-      const metrics = computeDailyMetrics(data)
-      setStats((prev) => prev.map((s) => s.id === editStat.id ? { ...s, ...data, ...metrics } : s))
+      const m = computeDailyMetrics(data)
+      setStats((prev) => prev.map((s) => s.id === editStat.id ? { ...s, ...data, ...m } : s))
       setEditStat(null)
     } catch (err) {
       console.error('Erreur mise à jour stat:', err)
-      setSaveError('Erreur lors de la mise à jour. Veuillez réessayer.')
+      setSaveError('Erreur lors de la mise à jour.')
     } finally { setSaving(false) }
   }
 
   const handleDelete = async () => {
     if (!deleteStat) return
-    setSaving(true)
-    setSaveError(null)
+    setSaving(true); setSaveError(null)
     try {
       await deleteDailyStat(deleteStat.id)
       setStats((prev) => prev.filter((s) => s.id !== deleteStat.id))
       setDeleteStat(null)
     } catch (err) {
       console.error('Erreur suppression stat:', err)
-      setSaveError('Erreur lors de la suppression. Veuillez réessayer.')
+      setSaveError('Erreur lors de la suppression.')
     } finally { setSaving(false) }
   }
 
@@ -131,6 +138,8 @@ function TrackerContent() {
       <TopBar title={project.name} subtitle="Tracker journalier"
         badge={<Badge variant="violet">{sym} {project.currency}</Badge>}
         actions={<Button icon={<Plus size={14} />} size="sm" onClick={() => setShowAdd(true)}>Ajouter</Button>} />
+
+      {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-5">
         <MetricCard label="Revenue" value={formatCurrency(metrics.totalRevenue, project.currency)} size="sm" />
         <MetricCard label="Profit" value={formatCurrency(metrics.totalProfit, project.currency)} size="sm" />
@@ -139,23 +148,46 @@ function TrackerContent() {
         <MetricCard label="AOV" value={formatCurrency(metrics.avgAOV, project.currency)} size="sm" />
         <MetricCard label="Commandes" value={formatNumber(metrics.totalOrders)} size="sm" />
       </div>
+
       <div className="mb-4"><DateFilter value={dateRange} onChange={setDateRange} /></div>
+
       {filteredStats.length === 0 ? (
         <EmptyState icon={<BarChart2 size={24} />} title="Aucune donnée sur cette période"
           action={{ label: '+ Ajouter une journée', onClick: () => setShowAdd(true) }} />
       ) : (
         <div className="space-y-5">
+          {/* Table d'abord, puis graphiques en bas */}
+          <TrackerTable
+            stats={filteredStats}
+            currency={project.currency}
+            onEdit={setEditStat}
+            onDelete={setDeleteStat}
+            breakEvenROAS={beROAS}
+          />
           <TrackerCharts stats={filteredStats} currency={project.currency} />
-          <TrackerTable stats={filteredStats} currency={project.currency} onEdit={setEditStat} onDelete={setDeleteStat} />
         </div>
       )}
+
       <Modal isOpen={showAdd} onClose={() => setShowAdd(false)} title="Ajouter une journée" size="md">
-        <DailyEntryForm onSubmit={handleAdd} onCancel={() => setShowAdd(false)} loading={saving} currencySymbol={sym} />
+        <DailyEntryForm
+          onSubmit={handleAdd} onCancel={() => setShowAdd(false)}
+          loading={saving} currencySymbol={sym} currency={project.currency}
+          offers={offers}
+        />
       </Modal>
       <Modal isOpen={!!editStat} onClose={() => setEditStat(null)} title="Modifier la journée" size="md">
-        {editStat && <DailyEntryForm defaultValues={editStat} onSubmit={handleUpdate} onCancel={() => setEditStat(null)} loading={saving} currencySymbol={sym} />}
+        {editStat && (
+          <DailyEntryForm
+            defaultValues={editStat}
+            onSubmit={handleUpdate} onCancel={() => setEditStat(null)}
+            loading={saving} currencySymbol={sym} currency={project.currency}
+            offers={offers}
+          />
+        )}
       </Modal>
-      <ConfirmDialog isOpen={!!deleteStat} onClose={() => setDeleteStat(null)} message={`Supprimer les données du ${deleteStat?.date} ?`} loading={saving} onConfirm={handleDelete} />
+      <ConfirmDialog isOpen={!!deleteStat} onClose={() => setDeleteStat(null)}
+        message={`Supprimer les données du ${deleteStat?.date} ?`}
+        loading={saving} onConfirm={handleDelete} />
     </div>
   )
 }

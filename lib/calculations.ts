@@ -65,10 +65,10 @@ export function calcMER(totalRevenue: number, totalAdSpend: number): number {
 
 /**
  * Profit journalier
- * = Revenus - Dépense publicitaire - Remboursements
+ * = Revenus - Dépense publicitaire - Remboursements - COGS total (optionnel)
  */
-export function calcDailyProfit(revenue: number, adSpend: number, refunds: number): number {
-  return revenue - adSpend - refunds
+export function calcDailyProfit(revenue: number, adSpend: number, refunds: number, cogsTotal = 0): number {
+  return revenue - adSpend - refunds - cogsTotal
 }
 
 /**
@@ -83,7 +83,7 @@ export function computeDailyMetrics(
     cvr: calcCVR(data.orders, data.sessions, data.addToCart),
     roas: calcROAS(data.revenue, data.adSpend),
     mer: calcMER(data.revenue, data.adSpend),
-    dailyProfit: calcDailyProfit(data.revenue, data.adSpend, data.refunds),
+    dailyProfit: calcDailyProfit(data.revenue, data.adSpend, data.refunds, data.cogsTotal ?? 0),
   }
 }
 

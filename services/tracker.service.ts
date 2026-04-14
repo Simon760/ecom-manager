@@ -38,6 +38,9 @@ function toDailyStat(id: string, data: Record<string, unknown>): DailyStat {
     roas: (data.roas as number) ?? 0,
     mer: (data.mer as number) ?? 0,
     dailyProfit: (data.dailyProfit as number) ?? 0,
+    offerId: (data.offerId as string) ?? undefined,
+    offerName: (data.offerName as string) ?? undefined,
+    cogsTotal: (data.cogsTotal as number) ?? undefined,
     createdAt: (data.createdAt as Timestamp)?.toDate() ?? new Date(),
     updatedAt: (data.updatedAt as Timestamp)?.toDate() ?? new Date(),
   }
