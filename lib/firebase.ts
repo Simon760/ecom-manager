@@ -32,4 +32,5 @@ export const COLLECTIONS = {
   REVENUES: 'revenues',
   CREATIVES: 'creatives',
   PRODUCTS: 'products',
+  CALCULATOR_OFFERS: 'calculator_offers',
 } as const

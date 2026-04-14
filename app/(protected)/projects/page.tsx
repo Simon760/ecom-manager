@@ -12,9 +12,11 @@ import Spinner from '@/components/ui/Spinner'
 import { getProjects, createProject, updateProject, deleteProject } from '@/services/projects.service'
 import { Project, ProjectFormData } from '@/types'
 import { Plus, FolderKanban } from 'lucide-react'
+import { ProjectRefreshContext } from '@/contexts/AuthContext'
 
 export default function ProjectsPage() {
   const { user } = useAuth()
+  const { triggerRefresh } = React.useContext(ProjectRefreshContext)
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
@@ -48,6 +50,7 @@ export default function ProjectsPage() {
       const project = await createProject(user.uid, data)
       setProjects((prev) => [project, ...prev])
       setShowCreate(false)
+      triggerRefresh()
     } catch (err) {
       console.error('Erreur création projet:', err)
       setSaveError('Erreur lors de la création du projet.')
@@ -76,6 +79,7 @@ export default function ProjectsPage() {
       await deleteProject(deleteTarget.id, user.uid)
       setProjects((prev) => prev.filter((p) => p.id !== deleteTarget.id))
       setDeleteTarget(null)
+      triggerRefresh()
     } catch (err) {
       console.error('Erreur suppression projet:', err)
       setSaveError('Erreur lors de la suppression du projet.')

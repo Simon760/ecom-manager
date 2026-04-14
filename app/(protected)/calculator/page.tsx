@@ -7,7 +7,8 @@ import ProfitabilityCalculator from '@/components/calculator/ProfitabilityCalcul
 import Badge from '@/components/ui/Badge'
 import Spinner from '@/components/ui/Spinner'
 import { getProjects } from '@/services/projects.service'
-import { Project, CURRENCY_SYMBOLS } from '@/types'
+import { getOffers } from '@/services/calculator.service'
+import { Project, CalculatorOffer, CURRENCY_SYMBOLS } from '@/types'
 
 function CalculatorContent() {
   const searchParams = useSearchParams()
@@ -15,6 +16,7 @@ function CalculatorContent() {
   const { user } = useAuth()
   const projectId = searchParams.get('projectId')
   const [project, setProject] = useState<Project | null>(null)
+  const [offers, setOffers] = useState<CalculatorOffer[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
 
@@ -22,17 +24,22 @@ function CalculatorContent() {
     if (!projectId) { router.replace('/projects'); return }
     if (!user) return
     let cancelled = false
-    getProjects(user.uid)
-      .then((ps) => {
+    Promise.all([
+      getProjects(user.uid),
+      getOffers(user.uid, projectId),
+    ])
+      .then(([ps, os]) => {
         if (cancelled) return
         const p = ps.find((x) => x.id === projectId)
         if (!p) { router.replace('/projects'); return }
-        setProject(p); setLoading(false)
+        setProject(p)
+        setOffers(os)
+        setLoading(false)
       })
       .catch((err) => {
         if (!cancelled) {
-          console.error('Erreur chargement projet calculateur:', err)
-          setLoadError('Erreur lors du chargement du projet.')
+          console.error('Erreur chargement calculateur:', err)
+          setLoadError('Erreur lors du chargement.')
           setLoading(false)
         }
       })
@@ -45,12 +52,22 @@ function CalculatorContent() {
       {loadError}
     </div>
   )
-  if (!project) return null
+  if (!project || !user) return null
+
   return (
     <div>
-      <TopBar title={project.name} subtitle="Calculateur de rentabilité"
-        badge={<Badge variant="violet">{CURRENCY_SYMBOLS[project.currency]} {project.currency}</Badge>} />
-      <ProfitabilityCalculator currency={project.currency} />
+      <TopBar
+        title={project.name}
+        subtitle="Calculateur ROAS Break-Even"
+        badge={<Badge variant="violet">{CURRENCY_SYMBOLS[project.currency]} {project.currency}</Badge>}
+      />
+      <ProfitabilityCalculator
+        currency={project.currency}
+        userId={user.uid}
+        projectId={project.id}
+        savedOffers={offers}
+        onOffersChange={setOffers}
+      />
     </div>
   )
 }

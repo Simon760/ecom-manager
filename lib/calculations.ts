@@ -133,70 +133,73 @@ export function calcSevenDayAverages(stats: DailyStat[]): {
  * Calcule tous les indicateurs de rentabilité
  *
  * Hypothèse : productPrice inclut la TVA.
- * Prix net = productPrice / (1 + vat/100)
+ * Prix HT = productPrice / (1 + vatRate/100)
  *
- * Le calcul prend en compte refundRate et chargebackRate
- * pour obtenir un revenu effectif par commande.
+ * Frais PSP et plateforme = % du prix TTC (appliqué sur le prix réel encaissé).
+ * Tax (impôts) = % du profit brut avant pub. À break-even le profit = 0 donc tax = 0.
+ * Pour la marge cible : on résout en tenant compte des impôts.
  */
 export function calcProfitability(inputs: CalculatorInputs): CalculatorOutputs {
   const {
-    productPrice,
-    cogs,
-    shippingCost,
-    fees,
-    vat,
-    aov,
-    refundRate,
-    chargebackRate,
+    productPrice, vatRate, aov,
+    cogsProduct, cogsPackaging, cogsOther,
+    shippingCost, pspFeeRate, platformFeeRate, otherCosts,
+    refundRate, chargebackRate, taxRate,
+    targetMargin,
   } = inputs
 
-  // Taux de déduction (remboursements + chargebacks)
+  // 1. Revenu net par commande (après TVA et déductions)
+  const priceExVAT = safeDivide(productPrice, 1 + vatRate / 100)
   const deductionRate = (refundRate + chargebackRate) / 100
+  const netRevenuePerOrder = priceExVAT * (1 - deductionRate)
 
-  // Revenu net par commande après TVA et déductions
-  const priceNet = safeDivide(productPrice, 1 + vat / 100)
-  const netRevenuePerOrder = priceNet * (1 - deductionRate)
+  // 2. COGS total
+  const totalCOGS = cogsProduct + cogsPackaging + cogsOther
 
-  // Total des coûts variables (hors pub)
-  const totalVariableCosts = cogs + shippingCost + fees
+  // 3. Frais variables (PSP + plateforme en % du prix TTC + port + autres)
+  const feeAmount = productPrice * (pspFeeRate + platformFeeRate) / 100
+  const totalFees = feeAmount + shippingCost + otherCosts
 
-  // Profit par commande (sans coût pub)
-  const profitPerOrder = netRevenuePerOrder - totalVariableCosts
+  // 4. Coûts variables totaux
+  const totalVariableCosts = totalCOGS + totalFees
 
-  // Marge % (sur revenu net)
-  const margin = safeDivide(profitPerOrder * 100, netRevenuePerOrder)
+  // 5. Profit brut (avant pub, avant impôts)
+  const grossProfitPerOrder = netRevenuePerOrder - totalVariableCosts
+  const grossMargin = safeDivide(grossProfitPerOrder * 100, netRevenuePerOrder)
 
-  // Break-even CPA = profit par commande (pub absorbée intégralement)
-  // Si CPA = breakEvenCPA → profit net = 0
-  const breakEvenCPA = Math.max(0, profitPerOrder)
+  // 6. Impôts estimés (sur profit brut avant pub — indicatif)
+  const taxAmount = Math.max(0, grossProfitPerOrder * taxRate / 100)
+  const netProfitPerOrder = grossProfitPerOrder - taxAmount
+  const netMargin = safeDivide(netProfitPerOrder * 100, netRevenuePerOrder)
 
-  // Break-even ROAS = AOV / CPA break-even
-  // ROAS = revenue / adSpend ; si 1 commande : revenue = aov, adSpend = cpa
+  // 7. Break-even CPA (à ce CPA, profit avant impôt = 0 → impôt = 0)
+  //    breakEvenCPA = grossProfitPerOrder (tout le profit brut part en pub)
+  const breakEvenCPA = Math.max(0, grossProfitPerOrder)
   const breakEvenROAS = safeDivide(aov, breakEvenCPA)
+
+  // 8. CPA pour atteindre la marge visée (après impôts)
+  //    On veut : (grossProfit - CPA) * (1 - taxRate/100) / netRevenue = targetMargin/100
+  //    => CPA = grossProfit - netRevenue * targetMargin/100 / (1 - taxRate/100)
+  //    Si taxRate = 0 : CPA = grossProfit - netRevenue * targetMargin/100
+  const taxFactor = Math.max(0.01, 1 - taxRate / 100)
+  const targetCPA = Math.max(0, grossProfitPerOrder - netRevenuePerOrder * (targetMargin / 100) / taxFactor)
+  const targetROAS = safeDivide(aov, targetCPA)
 
   return {
     netRevenuePerOrder,
+    totalCOGS,
+    totalFees,
     totalVariableCosts,
-    profitPerOrder,
-    margin,
+    grossProfitPerOrder,
+    grossMargin,
+    taxAmount,
+    netProfitPerOrder,
+    netMargin,
     breakEvenCPA,
     breakEvenROAS,
+    targetCPA,
+    targetROAS,
   }
-}
-
-/**
- * Mode objectif : calcule le CPA max pour atteindre une marge cible
- */
-export function calcMaxCPAForTargetMargin(
-  inputs: CalculatorInputs,
-  targetMarginPercent: number
-): number {
-  const { netRevenuePerOrder, totalVariableCosts } = calcProfitability(inputs)
-  // Profit cible par commande
-  const targetProfit = netRevenuePerOrder * (targetMarginPercent / 100)
-  // CPA max = revenu net - coûts - profit cible
-  const maxCPA = netRevenuePerOrder - totalVariableCosts - targetProfit
-  return Math.max(0, maxCPA)
 }
 
 // ============================================================

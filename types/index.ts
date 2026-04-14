@@ -184,23 +184,52 @@ export interface ProductFormData {
 
 // --- Calculateur de rentabilité ---
 export interface CalculatorInputs {
-  productPrice: number     // Prix de vente (TVA incluse)
-  cogs: number             // Coût d'achat
-  shippingCost: number     // Frais de port
-  fees: number             // Frais plateforme (Shopify, Stripe…)
-  vat: number              // TVA en % (0 si hors TVA)
-  aov: number              // AOV réel ou simulé
-  refundRate: number       // Taux de remboursement %
-  chargebackRate: number   // Taux de chargeback %
+  // Pricing
+  productPrice: number       // Prix de vente (TVA incluse)
+  vatRate: number            // TVA %
+  aov: number                // AOV réel (pour calcul ROAS)
+  // COGS détaillé
+  cogsProduct: number        // Coût produit
+  cogsPackaging: number      // Emballage
+  cogsOther: number          // Autres COGS
+  // Frais
+  shippingCost: number       // Frais de port (par commande)
+  pspFeeRate: number         // Frais PSP en % (Stripe, PayPal…)
+  platformFeeRate: number    // Frais plateforme en % (Shopify…)
+  otherCosts: number         // Autres frais fixes par commande
+  // Déductions
+  refundRate: number         // Taux remboursement %
+  chargebackRate: number     // Taux chargeback %
+  taxRate: number            // Impôts sur les bénéfices %
+  // Objectif (toujours visible)
+  targetMargin: number       // Marge nette visée %
 }
 
 export interface CalculatorOutputs {
-  netRevenuePerOrder: number   // Revenue net par commande
-  totalVariableCosts: number   // Tous coûts variables
-  profitPerOrder: number       // Profit par commande
-  margin: number               // Marge %
-  breakEvenCPA: number         // CPA max pour être rentable
-  breakEvenROAS: number        // ROAS min pour être rentable
+  netRevenuePerOrder: number   // Revenue net (après TVA + déductions)
+  totalCOGS: number            // COGS total
+  totalFees: number            // Frais variables total (PSP + plateforme + autre + port)
+  totalVariableCosts: number   // Coûts variables totaux
+  grossProfitPerOrder: number  // Profit brut avant pub et impôts
+  grossMargin: number          // Marge brute %
+  taxAmount: number            // Montant impôts estimé
+  netProfitPerOrder: number    // Profit net avant pub
+  netMargin: number            // Marge nette avant pub %
+  breakEvenCPA: number         // CPA max pour être à l'équilibre (0% marge)
+  breakEvenROAS: number        // ROAS min pour être à l'équilibre
+  targetCPA: number            // CPA max pour atteindre la marge visée
+  targetROAS: number           // ROAS pour atteindre la marge visée
+}
+
+export interface CalculatorOffer {
+  id: string
+  projectId: string
+  userId: string
+  name: string
+  inputs: CalculatorInputs
+  outputs: CalculatorOutputs
+  createdAt: Date
+  updatedAt: Date
 }
 
 // --- Forecast ---
