@@ -174,12 +174,14 @@ export default function GlobalDashboard() {
         <MetricCard
           label="Revenue total"
           value={formatCurrency(total.revenue, mainCurrency)}
+          rawValue={total.revenue} colorMode="profit"
           icon={<DollarSign size={14} />}
           variationLabel={periodLabel}
         />
         <MetricCard
           label="Profit total"
           value={formatCurrency(total.profit, mainCurrency)}
+          rawValue={total.profit} colorMode="profit"
           icon={<TrendingUp size={14} />}
           variationLabel={periodLabel}
         />
@@ -191,6 +193,7 @@ export default function GlobalDashboard() {
         <MetricCard
           label="ROAS global"
           value={formatMultiplier(globalROAS)}
+          rawValue={globalROAS} colorMode="roas"
           icon={<TrendingUp size={14} />}
           variationLabel={`${formatCurrency(total.adSpend, mainCurrency)} dépensé`}
         />

@@ -61,7 +61,7 @@ export default function TrackerTable({ stats, currency, onEdit, onDelete, breakE
               ...(showCOGS ? ['COGS'] : []),
               'Remb.', 'Profit J', 'Profit Cum.', 'Notes', ''
             ].map((h) => (
-              <th key={h} className="px-3 py-3 text-left font-semibold text-zinc-500 whitespace-nowrap">
+              <th key={h} className="px-3 py-3 text-left font-semibold text-zinc-400 whitespace-nowrap">
                 {h}
               </th>
             ))}
@@ -70,16 +70,16 @@ export default function TrackerTable({ stats, currency, onEdit, onDelete, breakE
           {sorted.length >= 2 && (
             <tr className="border-b border-zinc-800 bg-zinc-800/30">
               <td className="px-3 py-2 text-zinc-600 font-medium">Moy. 7j</td>
-              <td className="px-3 py-2 text-zinc-500">{formatCurrency(avg7.avgRevenue, currency)}</td>
-              <td className="px-3 py-2 text-zinc-500">{formatNumber(avg7.avgOrders, 1)}</td>
-              <td className="px-3 py-2 text-zinc-500">{formatCurrency(avg7.avgAdSpend, currency)}</td>
-              <td className="px-3 py-2 text-zinc-500">{formatMultiplier(avg7.avgROAS)}</td>
-              <td className="px-3 py-2 text-zinc-500">{formatCurrency(avg7.avgCPA, currency)}</td>
-              <td className="px-3 py-2 text-zinc-500">—</td>
-              <td className="px-3 py-2 text-zinc-500">{formatPercent(avg7.avgCVR)}</td>
-              {showCOGS && <td className="px-3 py-2 text-zinc-500">—</td>}
-              <td className="px-3 py-2 text-zinc-500">—</td>
-              <td className="px-3 py-2 text-zinc-500">{formatCurrency(avg7.avgProfit, currency)}</td>
+              <td className="px-3 py-2 text-zinc-400">{formatCurrency(avg7.avgRevenue, currency)}</td>
+              <td className="px-3 py-2 text-zinc-400">{formatNumber(avg7.avgOrders, 1)}</td>
+              <td className="px-3 py-2 text-zinc-400">{formatCurrency(avg7.avgAdSpend, currency)}</td>
+              <td className="px-3 py-2 text-zinc-400">{formatMultiplier(avg7.avgROAS)}</td>
+              <td className="px-3 py-2 text-zinc-400">{formatCurrency(avg7.avgCPA, currency)}</td>
+              <td className="px-3 py-2 text-zinc-400">—</td>
+              <td className="px-3 py-2 text-zinc-400">{formatPercent(avg7.avgCVR)}</td>
+              {showCOGS && <td className="px-3 py-2 text-zinc-400">—</td>}
+              <td className="px-3 py-2 text-zinc-400">—</td>
+              <td className="px-3 py-2 text-zinc-400">{formatCurrency(avg7.avgProfit, currency)}</td>
               <td className="px-3 py-2" colSpan={showCOGS ? 3 : 3}></td>
             </tr>
           )}
@@ -107,7 +107,7 @@ export default function TrackerTable({ stats, currency, onEdit, onDelete, breakE
                     : 'bg-red-500/[0.04] hover:bg-red-500/[0.08]'
                 )}
               >
-                <td className="px-3 py-3 font-medium text-zinc-300 whitespace-nowrap">
+                <td className="px-3 py-3 font-medium text-zinc-200 whitespace-nowrap">
                   {formatDate(stat.date)}
                   {idx === 0 && <span className="ml-1.5 text-[10px] text-violet-400">auj.</span>}
                 </td>
@@ -119,7 +119,7 @@ export default function TrackerTable({ stats, currency, onEdit, onDelete, breakE
 
                 <td className="px-3 py-3 text-zinc-300">{stat.orders}</td>
 
-                <td className="px-3 py-3 text-zinc-400">{formatCurrency(stat.adSpend, currency)}</td>
+                <td className="px-3 py-3 text-zinc-300">{formatCurrency(stat.adSpend, currency)}</td>
 
                 <td className="px-3 py-3">
                   <span className={cn('font-semibold', roasClass(stat.roas, breakEvenROAS))}>
@@ -140,8 +140,8 @@ export default function TrackerTable({ stats, currency, onEdit, onDelete, breakE
                   {cpaVar !== undefined && <Delta value={cpaVar} inverse />}
                 </td>
 
-                <td className="px-3 py-3 text-zinc-400">{formatCurrency(stat.aov, currency)}</td>
-                <td className="px-3 py-3 text-zinc-400">{formatPercent(stat.cvr)}</td>
+                <td className="px-3 py-3 text-zinc-300">{formatCurrency(stat.aov, currency)}</td>
+                <td className="px-3 py-3 text-zinc-300">{formatPercent(stat.cvr)}</td>
 
                 {showCOGS && (
                   <td className="px-3 py-3">
@@ -158,7 +158,7 @@ export default function TrackerTable({ stats, currency, onEdit, onDelete, breakE
                   </td>
                 )}
 
-                <td className="px-3 py-3 text-zinc-500">
+                <td className="px-3 py-3 text-zinc-400">
                   {stat.refunds > 0 ? formatCurrency(stat.refunds, currency) : '—'}
                 </td>
 

@@ -81,7 +81,7 @@ function SidebarContent({
 
       {/* Nav globale */}
       <div className="px-3 pt-4 pb-2">
-        <p className="text-[10px] font-semibold text-zinc-600 uppercase tracking-wider px-2 mb-2">
+        <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider px-2 mb-2">
           Global
         </p>
         <NavItem
@@ -101,7 +101,7 @@ function SidebarContent({
       {/* Projets */}
       <div className="px-3 py-2 flex-1 overflow-y-auto">
         <div className="flex items-center justify-between px-2 mb-2">
-          <p className="text-[10px] font-semibold text-zinc-600 uppercase tracking-wider">
+          <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
             Projets
           </p>
           <button
@@ -133,7 +133,7 @@ function SidebarContent({
                     'w-full flex items-center justify-between gap-2 px-2 py-2 rounded-lg text-xs font-medium transition-colors',
                     isProjectActive(project.id)
                       ? 'bg-violet-600/15 text-violet-300'
-                      : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
+                      : 'text-zinc-300 hover:text-white hover:bg-zinc-800'
                   )}
                 >
                   <span className="truncate text-left">{project.name}</span>
@@ -160,7 +160,7 @@ function SidebarContent({
                             'flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-colors',
                             active
                               ? 'bg-violet-600/20 text-violet-300'
-                              : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
+                              : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
                           )}
                         >
                           <item.icon size={12} />
@@ -180,10 +180,10 @@ function SidebarContent({
       <div className="px-3 py-3 border-t border-zinc-800">
         <div className="flex items-center justify-between gap-2 px-2">
           <div className="min-w-0">
-            <p className="text-xs font-medium text-zinc-300 truncate">
+            <p className="text-xs font-medium text-white truncate">
               {user?.displayName || 'Utilisateur'}
             </p>
-            <p className="text-[10px] text-zinc-600 truncate">{user?.email}</p>
+            <p className="text-[10px] text-zinc-400 truncate">{user?.email}</p>
           </div>
           <button
             onClick={signOut}
@@ -315,7 +315,7 @@ function NavItem({
         'flex items-center gap-2.5 px-2 py-2 rounded-lg text-xs font-medium transition-colors mb-0.5',
         active
           ? 'bg-violet-600/20 text-violet-300'
-          : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800'
+          : 'text-zinc-300 hover:text-white hover:bg-zinc-800'
       )}
     >
       <Icon size={14} />

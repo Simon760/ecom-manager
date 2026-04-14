@@ -141,9 +141,9 @@ function TrackerContent() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-5">
-        <MetricCard label="Revenue" value={formatCurrency(metrics.totalRevenue, project.currency)} size="sm" />
-        <MetricCard label="Profit" value={formatCurrency(metrics.totalProfit, project.currency)} size="sm" />
-        <MetricCard label="ROAS" value={formatMultiplier(metrics.avgROAS)} size="sm" />
+        <MetricCard label="Revenue" value={formatCurrency(metrics.totalRevenue, project.currency)} rawValue={metrics.totalRevenue} colorMode="profit" size="sm" />
+        <MetricCard label="Profit" value={formatCurrency(metrics.totalProfit, project.currency)} rawValue={metrics.totalProfit} colorMode="profit" size="sm" />
+        <MetricCard label="ROAS" value={formatMultiplier(metrics.avgROAS)} rawValue={metrics.avgROAS} colorMode="roas" breakEvenROAS={beROAS} size="sm" />
         <MetricCard label="CPA" value={formatCurrency(metrics.avgCPA, project.currency)} size="sm" inverseVariation />
         <MetricCard label="AOV" value={formatCurrency(metrics.avgAOV, project.currency)} size="sm" />
         <MetricCard label="Commandes" value={formatNumber(metrics.totalOrders)} size="sm" />

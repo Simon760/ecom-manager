@@ -62,8 +62,8 @@ export function CardHeader({ title, subtitle, action, icon, className }: CardHea
           </div>
         )}
         <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-zinc-100 truncate">{title}</h2>
-          {subtitle && <p className="text-xs text-zinc-500 mt-0.5 truncate">{subtitle}</p>}
+          <h2 className="text-sm font-semibold text-white truncate">{title}</h2>
+          {subtitle && <p className="text-xs text-zinc-400 mt-0.5 truncate">{subtitle}</p>}
         </div>
       </div>
       {action && <div className="flex-shrink-0">{action}</div>}
