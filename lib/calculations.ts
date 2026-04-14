@@ -177,7 +177,13 @@ export function calcProfitability(inputs: CalculatorInputs): CalculatorOutputs {
   const breakEvenCPA = Math.max(0, grossProfitPerOrder)
   const breakEvenROAS = safeDivide(aov, breakEvenCPA)
 
-  // 8. CPA pour atteindre la marge visée (après impôts)
+  // 8. Multiplicateurs
+  // priceMultiple = prix TTC / COGS produit seul ("j'achète X, je vends Y")
+  const priceMultiple = safeDivide(productPrice, cogsProduct || totalCOGS)
+  // revenueMultiple = revenu HT net / tous coûts variables (combien le revenu couvre les coûts)
+  const revenueMultiple = safeDivide(netRevenuePerOrder, totalVariableCosts)
+
+  // 9. CPA pour atteindre la marge visée (après impôts)
   //    On veut : (grossProfit - CPA) * (1 - taxRate/100) / netRevenue = targetMargin/100
   //    => CPA = grossProfit - netRevenue * targetMargin/100 / (1 - taxRate/100)
   //    Si taxRate = 0 : CPA = grossProfit - netRevenue * targetMargin/100
@@ -199,6 +205,8 @@ export function calcProfitability(inputs: CalculatorInputs): CalculatorOutputs {
     breakEvenROAS,
     targetCPA,
     targetROAS,
+    priceMultiple,
+    revenueMultiple,
   }
 }
 

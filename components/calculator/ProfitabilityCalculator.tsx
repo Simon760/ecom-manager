@@ -213,6 +213,43 @@ export default function ProfitabilityCalculator({
 
         {/* ── OUTPUTS ────────────────────────────────── */}
         <div className="space-y-4">
+          {/* Multiplicateurs */}
+          <Card>
+            <div className="flex items-center gap-3 mb-4">
+              <h3 className="text-sm font-semibold text-white">Multiplicateurs</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg bg-zinc-800/60 p-3">
+                <p className="text-[10px] text-zinc-500 mb-1">Multiplicateur prix</p>
+                <p className={cn(
+                  'text-2xl font-bold',
+                  results.priceMultiple >= 5 ? 'text-emerald-400'
+                  : results.priceMultiple >= 3 ? 'text-amber-400'
+                  : 'text-red-400'
+                )}>
+                  {results.priceMultiple > 0 ? `${results.priceMultiple.toFixed(2)}x` : '—'}
+                </p>
+                <p className="text-[10px] text-zinc-600 mt-1">
+                  Prix TTC {formatCurrency(inputs.productPrice, currency)} ÷ COGS produit {formatCurrency(inputs.cogsProduct || results.totalCOGS, currency)}
+                </p>
+              </div>
+              <div className="rounded-lg bg-zinc-800/60 p-3">
+                <p className="text-[10px] text-zinc-500 mb-1">Coverage ratio</p>
+                <p className={cn(
+                  'text-2xl font-bold',
+                  results.revenueMultiple >= 2 ? 'text-emerald-400'
+                  : results.revenueMultiple >= 1.5 ? 'text-amber-400'
+                  : 'text-red-400'
+                )}>
+                  {results.revenueMultiple > 0 ? `${results.revenueMultiple.toFixed(2)}x` : '—'}
+                </p>
+                <p className="text-[10px] text-zinc-600 mt-1">
+                  Revenu HT net ÷ tous coûts variables
+                </p>
+              </div>
+            </div>
+          </Card>
+
           {/* Décomposition des coûts */}
           <Card>
             <CardHeader title="Décomposition" icon={<Calculator size={14} />} />

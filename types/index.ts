@@ -232,6 +232,8 @@ export interface CalculatorOutputs {
   breakEvenROAS: number        // ROAS min pour être à l'équilibre
   targetCPA: number            // CPA max pour atteindre la marge visée
   targetROAS: number           // ROAS pour atteindre la marge visée
+  priceMultiple: number        // Prix TTC / COGS produit seul (multiplicateur brut)
+  revenueMultiple: number      // Revenu HT net / tous coûts variables (coverage ratio)
 }
 
 export interface CalculatorOffer {
