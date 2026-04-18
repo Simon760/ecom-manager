@@ -59,7 +59,7 @@ export default function DateFilter({ value, onChange }: DateFilterProps) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       {/* Preset buttons */}
-      <div className="flex items-center gap-1 bg-zinc-800 rounded-lg p-1">
+      <div className="flex items-center gap-1 bg-[#171B23] rounded-lg p-1">
         {PRESETS.map((p) => (
           <button
             key={p.key}
@@ -67,7 +67,7 @@ export default function DateFilter({ value, onChange }: DateFilterProps) {
             className={cn(
               'px-3 py-1 rounded-md text-xs font-medium transition-colors',
               preset === p.key
-                ? 'bg-zinc-700 text-zinc-100'
+                ? 'bg-[#1F242D] text-zinc-100'
                 : 'text-zinc-500 hover:text-zinc-300'
             )}
           >

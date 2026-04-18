@@ -148,7 +148,7 @@ export default function CSVImportModal({
         <div className="space-y-4">
           {/* Drop zone */}
           <div
-            className="border-2 border-dashed border-zinc-700 rounded-xl p-8 text-center cursor-pointer hover:border-violet-500/50 transition-colors"
+            className="border-2 border-dashed border-[#2F3541] rounded-xl p-8 text-center cursor-pointer hover:border-violet-500/50 transition-colors"
             onClick={() => fileRef.current?.click()}
             onDragOver={(e) => e.preventDefault()}
             onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFile(f) }}
@@ -163,9 +163,9 @@ export default function CSVImportModal({
 
           {/* Divider */}
           <div className="relative flex items-center gap-3">
-            <div className="flex-1 border-t border-zinc-800" />
+            <div className="flex-1 border-t border-[#23272F]" />
             <span className="text-xs text-zinc-600">ou collez le CSV manuellement</span>
-            <div className="flex-1 border-t border-zinc-800" />
+            <div className="flex-1 border-t border-[#23272F]" />
           </div>
 
           {/* Paste area */}
@@ -173,13 +173,13 @@ export default function CSVImportModal({
             value={csvText}
             onChange={(e) => setCsvText(e.target.value)}
             placeholder={'date,revenue,orders,adSpend\n2024-01-15,1500,12,350'}
-            className="w-full h-28 rounded-lg border border-zinc-700 bg-zinc-900 text-xs text-zinc-300 p-3 font-mono focus:outline-none focus:ring-2 focus:ring-violet-500/50 resize-none placeholder:text-zinc-700"
+            className="w-full h-28 rounded-lg border border-[#2F3541] bg-[#12151C] text-xs text-zinc-300 p-3 font-mono focus:outline-none focus:ring-2 focus:ring-violet-500/50 resize-none placeholder:text-zinc-700"
           />
 
           {parseError && <p className="text-xs text-red-400">{parseError}</p>}
 
           {/* Format hint */}
-          <div className="rounded-lg bg-zinc-800/50 p-3 space-y-1">
+          <div className="rounded-lg bg-[#0E1118] p-3 space-y-1">
             <p className="text-[10px] font-semibold text-zinc-500 uppercase mb-1">Format accepté</p>
             <p className="text-[10px] text-zinc-500 font-mono">date,revenue,orders,adSpend,refunds,addToCart,checkout,sessions,notes</p>
             <p className="text-[10px] text-zinc-600 mt-1.5">• Séparateur : virgule <span className="text-zinc-500">,</span> ou point-virgule <span className="text-zinc-500">;</span></p>
@@ -209,12 +209,12 @@ export default function CSVImportModal({
             <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
               {headers.map((col) => (
                 <div key={col} className="flex items-center gap-3">
-                  <span className="flex-1 text-xs text-zinc-400 font-mono bg-zinc-800/50 rounded px-2 py-1 truncate min-w-0">{col}</span>
+                  <span className="flex-1 text-xs text-zinc-400 font-mono bg-[#0E1118] rounded px-2 py-1 truncate min-w-0">{col}</span>
                   <span className="text-zinc-600 shrink-0">→</span>
                   <select
                     value={mapping[col] ?? ''}
                     onChange={(e) => setMapping((prev) => ({ ...prev, [col]: e.target.value as MappableField | '' }))}
-                    className="flex-1 rounded-lg border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 py-1.5 px-2 focus:outline-none focus:ring-2 focus:ring-violet-500/50 min-w-0"
+                    className="flex-1 rounded-lg border border-[#2F3541] bg-[#12151C] text-xs text-zinc-100 py-1.5 px-2 focus:outline-none focus:ring-2 focus:ring-violet-500/50 min-w-0"
                   >
                     <option value="">— Ignorer —</option>
                     {(Object.keys(FIELD_LABELS) as MappableField[]).map((f) => (
@@ -249,9 +249,9 @@ export default function CSVImportModal({
             <p className="text-xs text-zinc-300"><span className="font-semibold text-white">{validRows.length}</span> journées prêtes à importer</p>
           </div>
 
-          <div className="overflow-x-auto rounded-lg border border-zinc-800 max-h-72">
+          <div className="overflow-x-auto rounded-lg border border-[#23272F] max-h-72">
             <table className="w-full text-xs">
-              <thead className="bg-zinc-900 sticky top-0">
+              <thead className="bg-[#12151C] sticky top-0">
                 <tr>
                   {['Date', 'Revenue', 'Cmds', 'Pub', 'Remb.', 'ATC', 'Notes'].map((h) => (
                     <th key={h} className="px-2 py-2 text-left text-zinc-500 font-medium whitespace-nowrap">{h}</th>
@@ -260,7 +260,7 @@ export default function CSVImportModal({
               </thead>
               <tbody>
                 {validRows.slice(0, 30).map((row, i) => (
-                  <tr key={i} className="border-t border-zinc-800/50">
+                  <tr key={i} className="border-t border-[#1B1F27]">
                     <td className="px-2 py-1.5 text-zinc-300 font-mono whitespace-nowrap">{row.date}</td>
                     <td className="px-2 py-1.5 text-zinc-300 whitespace-nowrap">{currencySymbol}{row.revenue.toFixed(2)}</td>
                     <td className="px-2 py-1.5 text-zinc-400">{row.orders}</td>

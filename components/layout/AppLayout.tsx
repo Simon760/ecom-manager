@@ -56,9 +56,9 @@ function AppLayoutInner({ children }: AppLayoutProps) {
   }
 
   return (
-    <div className="flex min-h-screen bg-zinc-950">
+    <div className="flex min-h-screen bg-[#0A0D13]">
       {/* Sidebar (inclut useSearchParams, donc dans Suspense) */}
-      <Suspense fallback={<div className="w-56 bg-zinc-950 border-r border-zinc-800" />}>
+      <Suspense fallback={<div className="w-56 bg-[#0A0D13] border-r border-[#23272F]" />}>
         <Sidebar onNewProject={() => setShowNewProject(true)} />
       </Suspense>
 

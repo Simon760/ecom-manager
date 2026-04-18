@@ -9,19 +9,18 @@ import { getDailyStats } from '@/services/tracker.service'
 import { Project, DailyStat } from '@/types'
 import { aggregateStats } from '@/lib/calculations'
 import { formatCurrency, formatMultiplier, formatNumber, formatDateShort } from '@/lib/utils'
-import { format, subDays, startOfMonth } from 'date-fns'
+import { format, subDays } from 'date-fns'
 import MetricCard from './MetricCard'
 import ProjectRanking from './ProjectRanking'
 import TopBar from '@/components/layout/TopBar'
 import Spinner from '@/components/ui/Spinner'
 import Card, { CardHeader } from '@/components/ui/Card'
 import EmptyState from '@/components/ui/EmptyState'
-import Link from 'next/link'
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts'
-import { FolderKanban, TrendingUp, ShoppingCart, DollarSign } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { FolderKanban } from 'lucide-react'
+import { cn, calcVariation } from '@/lib/utils'
 
 type Period = '1d' | '7d' | '30d'
 
@@ -49,6 +48,15 @@ function getPeriodRange(period: Period): { start: string; end: string; days: str
     for (let i = 29; i >= 0; i--) days.push(fmt(subDays(today, i)))
   }
   return { start, end, days }
+}
+
+/** Période précédente équivalente (pour calculer les deltas) */
+function getPreviousPeriodRange(period: Period): { start: string; end: string } {
+  const today = new Date()
+  const fmt = (d: Date) => format(d, 'yyyy-MM-dd')
+  if (period === '1d') return { start: fmt(subDays(today, 1)), end: fmt(subDays(today, 1)) }
+  if (period === '7d') return { start: fmt(subDays(today, 13)), end: fmt(subDays(today, 7)) }
+  return { start: fmt(subDays(today, 59)), end: fmt(subDays(today, 30)) }
 }
 
 interface ProjectWithStats {
@@ -135,6 +143,31 @@ export default function GlobalDashboard() {
   const globalROAS = total.adSpend > 0 ? total.revenue / total.adSpend : 0
   const mainCurrency = allData[0]?.project.currency ?? 'EUR'
 
+  // Période précédente — calcul des variations
+  const prev = getPreviousPeriodRange(period)
+  const prevTotal = allData.reduce(
+    (acc, { stats }) => {
+      const prevStats = stats.filter((s) => s.date >= prev.start && s.date <= prev.end)
+      const m = aggregateStats(prevStats)
+      return {
+        revenue: acc.revenue + m.totalRevenue,
+        adSpend: acc.adSpend + m.totalAdSpend,
+        profit: acc.profit + m.totalProfit,
+        orders: acc.orders + m.totalOrders,
+      }
+    },
+    { revenue: 0, adSpend: 0, profit: 0, orders: 0 }
+  )
+  const prevROAS = prevTotal.adSpend > 0 ? prevTotal.revenue / prevTotal.adSpend : 0
+
+  const variations = {
+    revenue: calcVariation(total.revenue, prevTotal.revenue),
+    profit:  calcVariation(total.profit,  prevTotal.profit),
+    orders:  calcVariation(total.orders,  prevTotal.orders),
+    roas:    calcVariation(globalROAS,    prevROAS),
+  }
+  const prevLabel = period === '1d' ? 'vs hier' : period === '7d' ? 'vs 7j préc.' : 'vs 30j préc.'
+
   // Agrégation revenus par date pour le graphique
   const revenueByDate: Record<string, number> = {}
   data.forEach(({ stats }) => {
@@ -152,14 +185,14 @@ export default function GlobalDashboard() {
         title="Dashboard global"
         subtitle={`${data.length} projet${data.length > 1 ? 's' : ''}`}
         actions={
-          <div className="flex items-center gap-1 bg-zinc-800 rounded-lg p-1">
+          <div className="flex items-center gap-1 bg-[#0E1118] border border-[#1B1F27] rounded-lg p-1">
             {PERIODS.map((p) => (
               <button
                 key={p.key}
                 onClick={() => setPeriod(p.key)}
                 className={cn(
                   'px-3 py-1 rounded-md text-xs font-medium transition-colors',
-                  period === p.key ? 'bg-zinc-700 text-zinc-100' : 'text-zinc-500 hover:text-zinc-300'
+                  period === p.key ? 'bg-[#171B23] text-zinc-100' : 'text-zinc-500 hover:text-zinc-300'
                 )}
               >
                 {p.label}
@@ -172,30 +205,27 @@ export default function GlobalDashboard() {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <MetricCard
-          label="Revenue total"
+          label="Revenue"
           value={formatCurrency(total.revenue, mainCurrency)}
           rawValue={total.revenue} colorMode="profit"
-          icon={<DollarSign size={14} />}
-          variationLabel={periodLabel}
+          variation={variations.revenue} variationLabel={prevLabel}
         />
         <MetricCard
-          label="Profit total"
+          label="Profit"
           value={formatCurrency(total.profit, mainCurrency)}
           rawValue={total.profit} colorMode="profit"
-          icon={<TrendingUp size={14} />}
-          variationLabel={periodLabel}
+          variation={variations.profit} variationLabel={prevLabel}
         />
         <MetricCard
           label="Commandes"
           value={formatNumber(total.orders)}
-          icon={<ShoppingCart size={14} />}
+          variation={variations.orders} variationLabel={prevLabel}
         />
         <MetricCard
-          label="ROAS global"
+          label="ROAS"
           value={formatMultiplier(globalROAS)}
           rawValue={globalROAS} colorMode="roas"
-          icon={<TrendingUp size={14} />}
-          variationLabel={`${formatCurrency(total.adSpend, mainCurrency)} dépensé`}
+          variation={variations.roas} variationLabel={prevLabel}
         />
       </div>
 
@@ -206,8 +236,8 @@ export default function GlobalDashboard() {
           {period === '1d' ? (
             <div className="h-52 flex items-center justify-center">
               <div className="text-center">
-                <p className="text-3xl font-bold text-violet-400">{formatCurrency(total.revenue, mainCurrency)}</p>
-                <p className="text-xs text-zinc-500 mt-2">Revenue aujourd'hui</p>
+                <p className="text-3xl font-semibold text-violet-400 num-display">{formatCurrency(total.revenue, mainCurrency)}</p>
+                <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500 mt-2">Revenue aujourd'hui</p>
               </div>
             </div>
           ) : (
@@ -220,22 +250,22 @@ export default function GlobalDashboard() {
                       <stop offset="95%" stopColor="#7c3aed" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1B1F27" vertical={false} />
                   <XAxis
                     dataKey="date"
                     tickFormatter={formatDateShort}
-                    tick={{ fontSize: 10, fill: '#52525b' }}
+                    tick={{ fontSize: 10, fill: '#5E6674' }}
                     axisLine={false} tickLine={false}
                     interval="preserveStartEnd"
                   />
                   <YAxis
-                    tick={{ fontSize: 10, fill: '#52525b' }}
+                    tick={{ fontSize: 10, fill: '#5E6674' }}
                     axisLine={false} tickLine={false} width={50}
                     tickFormatter={(v) => formatCurrency(v, mainCurrency)}
                   />
                   <Tooltip
-                    contentStyle={{ background: '#18181b', border: '1px solid #3f3f46', borderRadius: 8, fontSize: 12 }}
-                    labelStyle={{ color: '#a1a1aa' }}
+                    contentStyle={{ background: '#12151C', border: '1px solid #23272F', borderRadius: 8, fontSize: 12, fontVariantNumeric: 'tabular-nums' }}
+                    labelStyle={{ color: '#8A93A3' }}
                     itemStyle={{ color: '#a78bfa' }}
                     labelFormatter={(l) => formatDateShort(l as string)}
                     formatter={(v: number) => [formatCurrency(v, mainCurrency), 'Revenue']}

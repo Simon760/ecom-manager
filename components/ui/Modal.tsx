@@ -50,17 +50,17 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md', f
       {/* Contenu */}
       <div
         className={cn(
-          'relative w-full rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl',
+          'relative w-full rounded-2xl border border-[#23272F] bg-[#0A0D13] shadow-2xl',
           'flex flex-col max-h-[90vh]',
           sizeStyles[size]
         )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-zinc-800 shrink-0">
+        <div className="flex items-center justify-between p-5 border-b border-[#23272F] shrink-0">
           <h3 className="text-base font-semibold text-zinc-100">{title}</h3>
           <button
             onClick={onClose}
-            className="rounded-lg p-1 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 transition-colors"
+            className="rounded-lg p-1 text-zinc-500 hover:text-zinc-300 hover:bg-[#171B23] transition-colors"
           >
             <X size={16} />
           </button>
@@ -73,7 +73,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md', f
 
         {/* Footer optionnel */}
         {footer && (
-          <div className="shrink-0 p-5 border-t border-zinc-800">
+          <div className="shrink-0 p-5 border-t border-[#23272F]">
             {footer}
           </div>
         )}

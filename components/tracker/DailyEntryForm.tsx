@@ -207,7 +207,7 @@ export default function DailyEntryForm({
                   <select
                     value={ch.channel}
                     onChange={(e) => updateChannelLine(idx, 'channel', e.target.value)}
-                    className="rounded-lg border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 py-1.5 px-2 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                    className="rounded-lg border border-[#2F3541] bg-[#12151C] text-xs text-zinc-100 py-1.5 px-2 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
                   >
                     {CHANNEL_OPTIONS.map((o) => (
                       <option key={o.key} value={o.key}>{o.label}</option>
@@ -219,7 +219,7 @@ export default function DailyEntryForm({
                       value={ch.adSpend || ''}
                       onChange={(e) => updateChannelLine(idx, 'adSpend', e.target.value)}
                       placeholder="0"
-                      className="w-full rounded-lg border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 py-1.5 pl-6 pr-2 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                      className="w-full rounded-lg border border-[#2F3541] bg-[#12151C] text-xs text-zinc-100 py-1.5 pl-6 pr-2 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
                     />
                   </div>
                   <button type="button" onClick={() => removeChannelLine(idx)}
@@ -258,7 +258,7 @@ export default function DailyEntryForm({
       />
 
       {/* ── COGS multi-offres ── */}
-      <div className="rounded-lg border border-zinc-700 bg-zinc-800/40 p-3 space-y-3">
+      <div className="rounded-lg border border-[#2F3541] bg-[#0E1118] p-3 space-y-3">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold text-zinc-300">Coûts variables (COGS)</p>
@@ -285,14 +285,14 @@ export default function DailyEntryForm({
               <div key={idx} className="grid grid-cols-[1fr_80px_80px_24px] gap-2 items-center">
                 <select value={line.offerId}
                   onChange={(e) => updateLine(idx, 'offerId', e.target.value)}
-                  className="rounded-lg border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 py-1.5 px-2 focus:outline-none focus:ring-2 focus:ring-violet-500/50 truncate">
+                  className="rounded-lg border border-[#2F3541] bg-[#12151C] text-xs text-zinc-100 py-1.5 px-2 focus:outline-none focus:ring-2 focus:ring-violet-500/50 truncate">
                   {offers.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
                 </select>
                 <input type="number" min={0} step={1}
                   value={line.orders || ''}
                   onChange={(e) => updateLine(idx, 'orders', e.target.value)}
                   placeholder="0"
-                  className="rounded-lg border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 py-1.5 px-2 focus:outline-none focus:ring-2 focus:ring-violet-500/50 w-full"
+                  className="rounded-lg border border-[#2F3541] bg-[#12151C] text-xs text-zinc-100 py-1.5 px-2 focus:outline-none focus:ring-2 focus:ring-violet-500/50 w-full"
                 />
                 <div className={cn('text-xs font-medium text-right', line.cogsTotal > 0 ? 'text-amber-400' : 'text-zinc-600')}>
                   {line.cogsTotal > 0 ? `−${formatCurrency(line.cogsTotal, currency as 'EUR')}` : '—'}
@@ -310,7 +310,7 @@ export default function DailyEntryForm({
                 </p>
               ))}
             </div>
-            <div className="border-t border-zinc-700 pt-2 flex items-center justify-between">
+            <div className="border-t border-[#2F3541] pt-2 flex items-center justify-between">
               <span className="text-xs text-zinc-400">COGS total ({totalCOGSOrders} commandes)</span>
               <span className="text-sm font-bold text-amber-400">− {formatCurrency(totalCOGS, currency as 'EUR')}</span>
             </div>

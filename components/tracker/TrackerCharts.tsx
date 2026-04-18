@@ -60,12 +60,13 @@ export default function TrackerCharts({ stats, currency }: TrackerChartsProps) {
 
   const tooltipStyle = {
     contentStyle: {
-      background: '#18181b',
-      border: '1px solid #3f3f46',
+      background: '#12151C',
+      border: '1px solid #23272F',
       borderRadius: 8,
       fontSize: 12,
+      fontVariantNumeric: 'tabular-nums' as const,
     },
-    labelStyle: { color: '#a1a1aa' },
+    labelStyle: { color: '#8A93A3' },
   }
 
   return (
@@ -73,7 +74,7 @@ export default function TrackerCharts({ stats, currency }: TrackerChartsProps) {
       <div className="flex items-center justify-between gap-3 mb-4">
         <CardHeader title="Graphiques" subtitle={`${sorted.length} jours de données`} className="mb-0" />
         {/* Tabs */}
-        <div className="flex items-center gap-1 bg-zinc-800 rounded-lg p-1">
+        <div className="flex items-center gap-1 bg-[#0E1118] border border-[#1B1F27] rounded-lg p-1">
           {TABS.map((tab) => (
             <button
               key={tab.key}
@@ -81,7 +82,7 @@ export default function TrackerCharts({ stats, currency }: TrackerChartsProps) {
               className={cn(
                 'px-3 py-1 rounded-md text-xs font-medium transition-colors',
                 activeTab === tab.key
-                  ? 'bg-zinc-700 text-zinc-100'
+                  ? 'bg-[#171B23] text-zinc-100'
                   : 'text-zinc-500 hover:text-zinc-300'
               )}
             >
@@ -101,30 +102,30 @@ export default function TrackerCharts({ stats, currency }: TrackerChartsProps) {
                   <stop offset="95%" stopColor="#7c3aed" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-              <XAxis dataKey="date" tickFormatter={formatDateShort} tick={{ fontSize: 10, fill: '#52525b' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-              <YAxis yAxisId="left" tick={{ fontSize: 10, fill: '#52525b' }} axisLine={false} tickLine={false} width={55} tickFormatter={(v) => formatCurrency(v, sym)} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#1B1F27" vertical={false} />
+              <XAxis dataKey="date" tickFormatter={formatDateShort} tick={{ fontSize: 10, fill: '#5E6674' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+              <YAxis yAxisId="left" tick={{ fontSize: 10, fill: '#5E6674' }} axisLine={false} tickLine={false} width={55} tickFormatter={(v) => formatCurrency(v, sym)} />
               <Tooltip {...tooltipStyle} labelFormatter={(l) => formatDateShort(l as string)} formatter={(v: number, name) => [formatCurrency(v, sym), name === 'revenue' ? 'Revenue' : 'Pub']} />
-              <Legend wrapperStyle={{ fontSize: 11, color: '#71717a' }} />
+              <Legend wrapperStyle={{ fontSize: 11, color: '#8A93A3' }} />
               <Area yAxisId="left" type="monotone" dataKey="revenue" name="Revenue" stroke="#7c3aed" strokeWidth={2} fill="url(#revGrad)" dot={false} />
-              <Bar yAxisId="left" dataKey="adSpend" name="Pub" fill="#3f3f46" radius={[2, 2, 0, 0]} maxBarSize={16} />
+              <Bar yAxisId="left" dataKey="adSpend" name="Pub" fill="#2A2F38" radius={[2, 2, 0, 0]} maxBarSize={16} />
             </ComposedChart>
           ) : activeTab === 'roas' ? (
             <ComposedChart data={chartData} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-              <XAxis dataKey="date" tickFormatter={formatDateShort} tick={{ fontSize: 10, fill: '#52525b' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-              <YAxis tick={{ fontSize: 10, fill: '#52525b' }} axisLine={false} tickLine={false} width={40} tickFormatter={(v) => `${v}x`} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#1B1F27" vertical={false} />
+              <XAxis dataKey="date" tickFormatter={formatDateShort} tick={{ fontSize: 10, fill: '#5E6674' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+              <YAxis tick={{ fontSize: 10, fill: '#5E6674' }} axisLine={false} tickLine={false} width={40} tickFormatter={(v) => `${v}x`} />
               <Tooltip {...tooltipStyle} labelFormatter={(l) => formatDateShort(l as string)} formatter={(v: number, name) => [name === 'roas' ? formatMultiplier(v) : formatCurrency(v, sym), name === 'roas' ? 'ROAS' : 'CPA']} />
-              <Legend wrapperStyle={{ fontSize: 11, color: '#71717a' }} />
+              <Legend wrapperStyle={{ fontSize: 11, color: '#8A93A3' }} />
               <Line type="monotone" dataKey="roas" name="ROAS" stroke="#a78bfa" strokeWidth={2} dot={{ fill: '#a78bfa', r: 3 }} />
               {/* Ligne de référence ROAS 2x */}
-              <Line type="monotone" dataKey={() => 2} name="Seuil 2x" stroke="#52525b" strokeWidth={1} strokeDasharray="4 4" dot={false} />
+              <Line type="monotone" dataKey={() => 2} name="Seuil 2x" stroke="#5E6674" strokeWidth={1} strokeDasharray="4 4" dot={false} />
             </ComposedChart>
           ) : activeTab === 'cvr' ? (
             <ComposedChart data={chartData} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-              <XAxis dataKey="date" tickFormatter={formatDateShort} tick={{ fontSize: 10, fill: '#52525b' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-              <YAxis tick={{ fontSize: 10, fill: '#52525b' }} axisLine={false} tickLine={false} width={40} tickFormatter={(v) => `${v}%`} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#1B1F27" vertical={false} />
+              <XAxis dataKey="date" tickFormatter={formatDateShort} tick={{ fontSize: 10, fill: '#5E6674' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+              <YAxis tick={{ fontSize: 10, fill: '#5E6674' }} axisLine={false} tickLine={false} width={40} tickFormatter={(v) => `${v}%`} />
               <Tooltip {...tooltipStyle} labelFormatter={(l) => formatDateShort(l as string)} formatter={(v: number) => [formatPercent(v), 'CVR']} />
               <Area type="monotone" dataKey="cvr" name="CVR" stroke="#34d399" strokeWidth={2} fill="#34d39920" dot={false} />
             </ComposedChart>
@@ -137,9 +138,9 @@ export default function TrackerCharts({ stats, currency }: TrackerChartsProps) {
                   <stop offset="95%" stopColor="#34d399" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-              <XAxis dataKey="date" tickFormatter={formatDateShort} tick={{ fontSize: 10, fill: '#52525b' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-              <YAxis tick={{ fontSize: 10, fill: '#52525b' }} axisLine={false} tickLine={false} width={55} tickFormatter={(v) => formatCurrency(v, sym)} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#1B1F27" vertical={false} />
+              <XAxis dataKey="date" tickFormatter={formatDateShort} tick={{ fontSize: 10, fill: '#5E6674' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+              <YAxis tick={{ fontSize: 10, fill: '#5E6674' }} axisLine={false} tickLine={false} width={55} tickFormatter={(v) => formatCurrency(v, sym)} />
               <Tooltip {...tooltipStyle} labelFormatter={(l) => formatDateShort(l as string)} formatter={(v: number) => [formatCurrency(v, sym), 'Profit cumulé']} />
               <Area type="monotone" dataKey="cumProfit" stroke="#34d399" strokeWidth={2} fill="url(#profitGrad)" dot={false} />
             </AreaChart>

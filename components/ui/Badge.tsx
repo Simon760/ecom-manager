@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 type BadgeVariant = 'default' | 'success' | 'danger' | 'warning' | 'info' | 'violet'
 
 const variantStyles: Record<BadgeVariant, string> = {
-  default: 'bg-zinc-800 text-zinc-400 border-zinc-700',
+  default: 'bg-[#171B23] text-zinc-400 border-[#2F3541]',
   success: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25',
   danger: 'bg-red-500/15 text-red-400 border-red-500/25',
   warning: 'bg-amber-500/15 text-amber-400 border-amber-500/25',

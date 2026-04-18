@@ -43,7 +43,7 @@ export default function ProjectRanking({ data }: { data: RankingEntry[] }) {
             </span>
           </div>
           {/* Progress bar */}
-          <div className="ml-7 h-1 rounded-full bg-zinc-800">
+          <div className="ml-7 h-1 rounded-full bg-[#171B23]">
             <div
               className="h-full rounded-full bg-violet-600 transition-all duration-500"
               style={{ width: `${(metrics.totalRevenue / maxRevenue) * 100}%` }}

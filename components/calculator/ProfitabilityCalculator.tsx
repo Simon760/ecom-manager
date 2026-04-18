@@ -123,7 +123,7 @@ export default function ProfitabilityCalculator({
         'flex items-center gap-3 p-3 rounded-xl border',
         activeOfferId
           ? 'border-violet-500/40 bg-violet-600/10'
-          : 'border-zinc-700 bg-zinc-800/40'
+          : 'border-[#23272F] bg-[#0E1118]'
       )}>
         {activeOfferId ? (
           <>
@@ -206,7 +206,7 @@ export default function ProfitabilityCalculator({
               <h3 className="text-sm font-semibold text-white">Multiplicateurs</h3>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-lg bg-zinc-800/60 p-3">
+              <div className="rounded-lg bg-[#0E1118] border border-[#1B1F27] p-3">
                 <p className="text-[10px] text-zinc-500 mb-1">Multiplicateur prix</p>
                 <p className={cn(
                   'text-2xl font-bold',
@@ -218,7 +218,7 @@ export default function ProfitabilityCalculator({
                   {formatCurrency(inputs.productPrice, currency)} ÷ {formatCurrency(inputs.cogsProduct || results.totalCOGS, currency)} COGS
                 </p>
               </div>
-              <div className="rounded-lg bg-zinc-800/60 p-3">
+              <div className="rounded-lg bg-[#0E1118] border border-[#1B1F27] p-3">
                 <p className="text-[10px] text-zinc-500 mb-1">Coverage ratio</p>
                 <p className={cn(
                   'text-2xl font-bold',
@@ -236,17 +236,17 @@ export default function ProfitabilityCalculator({
             <CardHeader title="Décomposition" icon={<Calculator size={14} />} />
             <div className="space-y-2">
               <Row label="Revenu net / commande (HT)" value={formatCurrency(results.netRevenuePerOrder, currency)} hint="Prix HT × (1 − remb. − chargebacks)" />
-              <div className="pl-2 space-y-1 border-l border-zinc-800">
+              <div className="pl-2 space-y-1 border-l border-[#1B1F27]">
                 <Row label="COGS total" value={`− ${formatCurrency(results.totalCOGS, currency)}`} small valueClass="text-red-400/80" />
                 <Row label="Frais variables (port + PSP + plateforme)" value={`− ${formatCurrency(results.totalFees, currency)}`} small valueClass="text-red-400/80" />
               </div>
-              <div className="border-t border-zinc-800 pt-2">
+              <div className="border-t border-[#1B1F27] pt-2">
                 <Row label="Profit brut / commande (avant pub)" value={formatCurrency(results.grossProfitPerOrder, currency)}
                   valueClass={isViable ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold'} />
                 <Row label="Marge brute" value={formatPercent(results.grossMargin)} valueClass="text-zinc-300" />
               </div>
               {inputs.taxRate > 0 && (
-                <div className="pl-2 space-y-1 border-l border-zinc-800">
+                <div className="pl-2 space-y-1 border-l border-[#1B1F27]">
                   <Row label={`Impôts (${inputs.taxRate}%)`} value={`− ${formatCurrency(results.taxAmount, currency)}`} small valueClass="text-amber-400/80" hint="Estimatif avant pub" />
                   <Row label="Profit net / commande (avant pub)" value={formatCurrency(results.netProfitPerOrder, currency)} small valueClass="text-zinc-300" />
                   <Row label="Marge nette (avant pub)" value={formatPercent(results.netMargin)} small valueClass="text-zinc-400" />
@@ -263,7 +263,7 @@ export default function ProfitabilityCalculator({
                 <span className="text-xs text-zinc-500">Marge visée</span>
                 <div className="relative flex items-center">
                   <input type="number" step="1" min={0}
-                    className="w-16 rounded-lg border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 py-1 pl-2 pr-6 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500"
+                    className="w-16 rounded-lg border border-[#23272F] bg-[#0E1118] text-xs text-zinc-100 py-1 pl-2 pr-6 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500"
                     {...register('targetMargin', n)}
                   />
                   <span className="absolute right-2 text-xs text-zinc-500 pointer-events-none">%</span>
@@ -292,7 +292,7 @@ export default function ProfitabilityCalculator({
                     { label: '+20%', roas: results.breakEvenROAS * 1.2, cpa: safeDivide(inputs.aov, results.breakEvenROAS * 1.2) },
                     { label: '+50%', roas: results.breakEvenROAS * 1.5, cpa: safeDivide(inputs.aov, results.breakEvenROAS * 1.5) },
                   ].map(({ label, roas, cpa }) => (
-                    <div key={label} className="rounded-lg bg-zinc-800/60 p-2 text-center">
+                    <div key={label} className="rounded-lg bg-[#0E1118] border border-[#1B1F27] p-2 text-center">
                       <p className="text-[10px] text-zinc-500 mb-1">ROAS {label}</p>
                       <p className="text-xs font-bold text-zinc-200">{formatMultiplier(roas)}</p>
                       <p className="text-[10px] text-zinc-500">CPA {formatCurrency(cpa, currency)}</p>
@@ -321,7 +321,7 @@ export default function ProfitabilityCalculator({
                     'rounded-xl border p-4 transition-all',
                     isActive
                       ? 'border-violet-500/50 bg-violet-600/10'
-                      : 'border-zinc-800 bg-zinc-900 hover:border-zinc-700'
+                      : 'border-[#23272F] bg-[#12151C] hover:border-[#2F3541] hover:bg-[#171B23]'
                   )}
                 >
                   {/* Header */}
@@ -335,7 +335,7 @@ export default function ProfitabilityCalculator({
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => handleEditOffer(offer)}
-                        className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-zinc-400 hover:text-white hover:bg-zinc-700 transition-colors"
+                        className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-zinc-400 hover:text-white hover:bg-[#1F242D] transition-colors"
                       >
                         <Pencil size={11} /> Modifier
                       </button>
@@ -413,7 +413,7 @@ function OfferStat({ label, value, color }: {
   }[color ?? ''] ?? 'text-zinc-200'
 
   return (
-    <div className="rounded-lg bg-zinc-800/50 px-2.5 py-2">
+    <div className="rounded-lg bg-[#0E1118] border border-[#1B1F27] px-2.5 py-2">
       <p className="text-[10px] text-zinc-500 mb-0.5">{label}</p>
       <p className={cn('text-xs font-bold', colorClass)}>{value}</p>
     </div>

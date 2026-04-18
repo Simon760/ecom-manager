@@ -51,25 +51,25 @@ export default function TrackerTable({ stats, currency, onEdit, onDelete, breakE
   const showCOGS = sorted.some((s) => s.cogsTotal !== undefined && s.cogsTotal > 0)
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-zinc-800">
-      <table className="w-full text-xs">
+    <div className="overflow-x-auto rounded-xl border border-[#23272F] bg-[#12151C]">
+      <table className="w-full text-xs tabular">
         <thead>
-          <tr className="border-b border-zinc-800 bg-zinc-900/80">
+          <tr className="border-b border-[#23272F] bg-[#0E1118]">
             {[
               'Date', 'Revenue', 'Cmds', 'Pub',
               'ROAS', 'CPA', 'AOV', 'CVR',
               ...(showCOGS ? ['COGS'] : []),
               'Remb.', 'Profit J', 'Profit Cum.', 'Notes', ''
             ].map((h) => (
-              <th key={h} className="px-3 py-3 text-left font-semibold text-zinc-400 whitespace-nowrap">
+              <th key={h} className="px-3 py-3 text-left text-[10px] font-medium uppercase tracking-[0.08em] text-zinc-500 whitespace-nowrap">
                 {h}
               </th>
             ))}
           </tr>
           {/* Moyennes 7j */}
           {sorted.length >= 2 && (
-            <tr className="border-b border-zinc-800 bg-zinc-800/30">
-              <td className="px-3 py-2 text-zinc-600 font-medium">Moy. 7j</td>
+            <tr className="border-b border-[#1B1F27] bg-[#0E1118]/60">
+              <td className="px-3 py-2 text-zinc-500 font-medium text-[10px] uppercase tracking-[0.08em]">Moy. 7j</td>
               <td className="px-3 py-2 text-zinc-400">{formatCurrency(avg7.avgRevenue, currency)}</td>
               <td className="px-3 py-2 text-zinc-400">{formatNumber(avg7.avgOrders, 1)}</td>
               <td className="px-3 py-2 text-zinc-400">{formatCurrency(avg7.avgAdSpend, currency)}</td>
@@ -99,11 +99,11 @@ export default function TrackerTable({ stats, currency, onEdit, onDelete, breakE
               <tr
                 key={stat.id}
                 className={cn(
-                  'border-b border-zinc-800/50 transition-colors group',
+                  'border-b border-[#1B1F27] transition-colors group',
                   profitPositive
                     ? 'bg-emerald-500/[0.03] hover:bg-emerald-500/[0.07]'
                     : profitNeutral
-                    ? 'hover:bg-zinc-800/30'
+                    ? 'hover:bg-[#171B23]'
                     : 'bg-red-500/[0.04] hover:bg-red-500/[0.08]'
                 )}
               >
@@ -195,7 +195,7 @@ export default function TrackerTable({ stats, currency, onEdit, onDelete, breakE
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={() => onEdit(stat)}
-                      className="p-1.5 rounded-lg text-zinc-600 hover:text-zinc-300 hover:bg-zinc-700 transition-colors"
+                      className="p-1.5 rounded-lg text-zinc-600 hover:text-zinc-300 hover:bg-[#1F242D] transition-colors"
                     >
                       <Pencil size={11} />
                     </button>

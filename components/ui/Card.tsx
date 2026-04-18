@@ -31,9 +31,9 @@ export default function Card({
     <div
       onClick={onClick}
       className={cn(
-        'rounded-xl border border-zinc-800 bg-zinc-900',
+        'rounded-xl border border-[#23272F] bg-[#12151C]',
         paddingStyles[padding],
-        hover && 'cursor-pointer transition-all duration-200 hover:border-zinc-700 hover:bg-zinc-800/80',
+        hover && 'cursor-pointer transition-colors duration-200 hover:border-[#2F3541] hover:bg-[#171B23]',
         onClick && 'cursor-pointer',
         className
       )}
@@ -57,13 +57,13 @@ export function CardHeader({ title, subtitle, action, icon, className }: CardHea
     <div className={cn('flex items-start justify-between gap-3 mb-5', className)}>
       <div className="flex items-center gap-3 min-w-0">
         {icon && (
-          <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-violet-500/15 flex items-center justify-center text-violet-400">
+          <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-[#171B23] border border-[#23272F] flex items-center justify-center text-zinc-400">
             {icon}
           </div>
         )}
         <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-white truncate">{title}</h2>
-          {subtitle && <p className="text-xs text-zinc-400 mt-0.5 truncate">{subtitle}</p>}
+          <h2 className="text-[13px] font-semibold text-white truncate tracking-tight">{title}</h2>
+          {subtitle && <p className="text-[11px] text-zinc-500 mt-0.5 truncate">{subtitle}</p>}
         </div>
       </div>
       {action && <div className="flex-shrink-0">{action}</div>}

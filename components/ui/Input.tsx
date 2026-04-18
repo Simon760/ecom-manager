@@ -39,12 +39,12 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(function Input(
           ref={ref}
           id={inputId}
           className={cn(
-            'w-full rounded-lg border bg-zinc-900 text-sm text-zinc-100',
+            'w-full rounded-lg border bg-[#12151C] text-sm text-zinc-100',
             'placeholder:text-zinc-600 transition-colors duration-150',
             'focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500',
             error
               ? 'border-red-500/50 focus:ring-red-500/50 focus:border-red-500'
-              : 'border-zinc-700 hover:border-zinc-600',
+              : 'border-[#2F3541] hover:border-[#3A414E]',
             prefix ? 'pl-8' : 'pl-3',
             suffix ? 'pr-8' : 'pr-3',
             'py-2',
@@ -91,12 +91,12 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(fun
         ref={ref}
         id={textareaId}
         className={cn(
-          'w-full rounded-lg border bg-zinc-900 text-sm text-zinc-100',
+          'w-full rounded-lg border bg-[#12151C] text-sm text-zinc-100',
           'placeholder:text-zinc-600 transition-colors duration-150 resize-none',
           'focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500',
           error
             ? 'border-red-500/50 focus:ring-red-500/50 focus:border-red-500'
-            : 'border-zinc-700 hover:border-zinc-600',
+            : 'border-[#2F3541] hover:border-[#3A414E]',
           'px-3 py-2',
           className
         )}

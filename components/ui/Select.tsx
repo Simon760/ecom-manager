@@ -39,12 +39,12 @@ export default function Select({
       <select
         id={selectId}
         className={cn(
-          'w-full rounded-lg border bg-zinc-900 text-sm text-zinc-100',
+          'w-full rounded-lg border bg-[#12151C] text-sm text-zinc-100',
           'transition-colors duration-150 cursor-pointer',
           'focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500',
           error
             ? 'border-red-500/50'
-            : 'border-zinc-700 hover:border-zinc-600',
+            : 'border-[#2F3541] hover:border-[#3A414E]',
           'px-3 py-2',
           className
         )}
@@ -56,7 +56,7 @@ export default function Select({
           </option>
         )}
         {options.map((opt) => (
-          <option key={opt.value} value={opt.value} className="bg-zinc-900 text-zinc-100">
+          <option key={opt.value} value={opt.value} className="bg-[#12151C] text-zinc-100">
             {opt.label}
           </option>
         ))}
