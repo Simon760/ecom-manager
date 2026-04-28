@@ -261,6 +261,7 @@ export interface CalculatorOffer {
   name: string
   inputs: CalculatorInputs
   outputs: CalculatorOutputs
+  order?: number
   createdAt: Date
   updatedAt: Date
 }

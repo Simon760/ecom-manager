@@ -4,14 +4,31 @@
 // ============================================================
 import React, { useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
+import {
+  DndContext,
+  DragEndEvent,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import Card, { CardHeader } from '@/components/ui/Card'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
 import { CalculatorInputs, CalculatorOffer, Currency } from '@/types'
 import { calcProfitability } from '@/lib/calculations'
 import { formatCurrency, formatPercent, formatMultiplier } from '@/lib/utils'
-import { saveOffer, updateOffer, deleteOffer } from '@/services/calculator.service'
-import { Calculator, Save, Trash2, Pencil, Plus, Info } from 'lucide-react'
+import { saveOffer, updateOffer, deleteOffer, updateOffersOrder } from '@/services/calculator.service'
+import { Calculator, Save, Trash2, Pencil, Plus, Info, GripVertical } from 'lucide-react'
 import { cn, safeDivide } from '@/lib/utils'
 
 interface ProfitabilityCalculatorProps {
@@ -95,7 +112,9 @@ export default function ProfitabilityCalculator({
             : o
         ))
       } else {
-        const offer = await saveOffer(userId, projectId, offerName, inputs, results)
+        // Nouvelle offre placée en tête de liste : order = (min existant) - 1
+        const minOrder = savedOffers.reduce<number>((m, o) => o.order !== undefined ? Math.min(m, o.order) : m, 0)
+        const offer = await saveOffer(userId, projectId, offerName, inputs, results, minOrder - 1)
         onOffersChange([offer, ...savedOffers])
         setActiveOfferId(offer.id)
       }
@@ -103,6 +122,27 @@ export default function ProfitabilityCalculator({
       console.error('Erreur sauvegarde offre:', err)
       setSaveError('Erreur lors de la sauvegarde.')
     } finally { setSaving(false) }
+  }
+
+  // ── Drag & drop ──
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIndex = savedOffers.findIndex((o) => o.id === active.id)
+    const newIndex = savedOffers.findIndex((o) => o.id === over.id)
+    if (oldIndex === -1 || newIndex === -1) return
+    const reordered = arrayMove(savedOffers, oldIndex, newIndex).map((o, i) => ({ ...o, order: i }))
+    // Optimistic UI
+    onOffersChange(reordered)
+    // Persistance Firestore (best-effort)
+    updateOffersOrder(reordered.map((o) => o.id)).catch((err) => {
+      console.error('Erreur reorder offres:', err)
+    })
   }
 
   const handleDelete = async (offerId: string) => {
@@ -308,65 +348,114 @@ export default function ProfitabilityCalculator({
       {/* ── Récap des offres sauvegardées ── */}
       {savedOffers.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold text-white mb-3">
-            Offres sauvegardées ({savedOffers.length})
-          </h3>
-          <div className="space-y-2">
-            {savedOffers.map((offer) => {
-              const isActive = activeOfferId === offer.id
-              return (
-                <div
-                  key={offer.id}
-                  className={cn(
-                    'rounded-xl border p-4 transition-all',
-                    isActive
-                      ? 'border-violet-500/50 bg-violet-600/10'
-                      : 'border-[#23272F] bg-[#12151C] hover:border-[#2F3541] hover:bg-[#171B23]'
-                  )}
-                >
-                  {/* Header */}
-                  <div className="flex items-center justify-between gap-3 mb-3">
-                    <div className="flex items-center gap-2">
-                      {isActive && <span className="w-1.5 h-1.5 rounded-full bg-violet-400 shrink-0" />}
-                      <span className={cn('text-sm font-semibold', isActive ? 'text-violet-300' : 'text-white')}>
-                        {offer.name}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => handleEditOffer(offer)}
-                        className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-zinc-400 hover:text-white hover:bg-[#1F242D] transition-colors"
-                      >
-                        <Pencil size={11} /> Modifier
-                      </button>
-                      <button
-                        onClick={() => handleDelete(offer.id)}
-                        disabled={deletingId === offer.id}
-                        className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-zinc-600 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
-                      >
-                        <Trash2 size={11} /> {deletingId === offer.id ? '…' : 'Supprimer'}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Métriques clés */}
-                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                    <OfferStat label="Prix TTC" value={formatCurrency(offer.inputs.productPrice, currency)} />
-                    <OfferStat label="Multiplicateur" value={offer.outputs.priceMultiple > 0 ? `${offer.outputs.priceMultiple.toFixed(2)}x` : '—'}
-                      color={offer.outputs.priceMultiple >= 5 ? 'emerald' : offer.outputs.priceMultiple >= 3 ? 'amber' : 'red'} />
-                    <OfferStat label="Marge brute" value={formatPercent(offer.outputs.grossMargin)}
-                      color={offer.outputs.grossMargin >= 30 ? 'emerald' : offer.outputs.grossMargin >= 15 ? 'amber' : 'red'} />
-                    <OfferStat label="ROAS BE" value={formatMultiplier(offer.outputs.breakEvenROAS)} color="violet" />
-                    <OfferStat label="CPA BE" value={formatCurrency(offer.outputs.breakEvenCPA, currency)} color="violet" />
-                    <OfferStat label="Profit brut/cmd" value={formatCurrency(offer.outputs.grossProfitPerOrder, currency)}
-                      color={offer.outputs.grossProfitPerOrder > 0 ? 'emerald' : 'red'} />
-                  </div>
-                </div>
-              )
-            })}
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-white">
+              Offres sauvegardées ({savedOffers.length})
+            </h3>
+            <p className="text-[10px] text-zinc-500 hidden sm:block">
+              Glisse <GripVertical size={10} className="inline -mt-0.5" /> pour réordonner
+            </p>
           </div>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={savedOffers.map((o) => o.id)} strategy={verticalListSortingStrategy}>
+              <div className="space-y-2">
+                {savedOffers.map((offer) => (
+                  <SortableOfferCard
+                    key={offer.id}
+                    offer={offer}
+                    currency={currency}
+                    isActive={activeOfferId === offer.id}
+                    deleting={deletingId === offer.id}
+                    onEdit={handleEditOffer}
+                    onDelete={handleDelete}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
         </div>
       )}
+    </div>
+  )
+}
+
+// ── Sortable offer card ──
+function SortableOfferCard({
+  offer, currency, isActive, deleting, onEdit, onDelete,
+}: {
+  offer: CalculatorOffer
+  currency: Currency
+  isActive: boolean
+  deleting: boolean
+  onEdit: (offer: CalculatorOffer) => void
+  onDelete: (offerId: string) => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: offer.id })
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : 'auto',
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        'rounded-xl border p-4 transition-colors',
+        isActive
+          ? 'border-violet-500/50 bg-violet-600/10'
+          : 'border-[#23272F] bg-[#12151C] hover:border-[#2F3541] hover:bg-[#171B23]',
+        isDragging && 'shadow-2xl shadow-black/40 border-violet-500/40'
+      )}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <button
+            type="button"
+            {...attributes}
+            {...listeners}
+            aria-label="Réordonner cette offre"
+            className="cursor-grab active:cursor-grabbing text-zinc-600 hover:text-zinc-300 transition-colors -ml-1 p-1 rounded touch-none"
+          >
+            <GripVertical size={14} />
+          </button>
+          {isActive && <span className="w-1.5 h-1.5 rounded-full bg-violet-400 shrink-0" />}
+          <span className={cn('text-sm font-semibold truncate', isActive ? 'text-violet-300' : 'text-white')}>
+            {offer.name}
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            onClick={() => onEdit(offer)}
+            className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-zinc-400 hover:text-white hover:bg-[#1F242D] transition-colors"
+          >
+            <Pencil size={11} /> Modifier
+          </button>
+          <button
+            onClick={() => onDelete(offer.id)}
+            disabled={deleting}
+            className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-zinc-600 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+          >
+            <Trash2 size={11} /> {deleting ? '…' : 'Supprimer'}
+          </button>
+        </div>
+      </div>
+
+      {/* Métriques clés */}
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+        <OfferStat label="Prix TTC" value={formatCurrency(offer.inputs.productPrice, currency)} />
+        <OfferStat label="Multiplicateur" value={offer.outputs.priceMultiple > 0 ? `${offer.outputs.priceMultiple.toFixed(2)}x` : '—'}
+          color={offer.outputs.priceMultiple >= 5 ? 'emerald' : offer.outputs.priceMultiple >= 3 ? 'amber' : 'red'} />
+        <OfferStat label="Marge brute" value={formatPercent(offer.outputs.grossMargin)}
+          color={offer.outputs.grossMargin >= 30 ? 'emerald' : offer.outputs.grossMargin >= 15 ? 'amber' : 'red'} />
+        <OfferStat label="ROAS BE" value={formatMultiplier(offer.outputs.breakEvenROAS)} color="violet" />
+        <OfferStat label="CPA BE" value={formatCurrency(offer.outputs.breakEvenCPA, currency)} color="violet" />
+        <OfferStat label="Profit brut/cmd" value={formatCurrency(offer.outputs.grossProfitPerOrder, currency)}
+          color={offer.outputs.grossProfitPerOrder > 0 ? 'emerald' : 'red'} />
+      </div>
     </div>
   )
 }
