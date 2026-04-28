@@ -259,6 +259,7 @@ export interface CalculatorOffer {
   projectId: string
   userId: string
   name: string
+  productId?: string           // Produit lié (optionnel — pour grouper les offres)
   inputs: CalculatorInputs
   outputs: CalculatorOutputs
   order?: number

@@ -8,7 +8,8 @@ import Badge from '@/components/ui/Badge'
 import Spinner from '@/components/ui/Spinner'
 import { getProjects } from '@/services/projects.service'
 import { getOffers } from '@/services/calculator.service'
-import { Project, CalculatorOffer, CURRENCY_SYMBOLS } from '@/types'
+import { getProducts } from '@/services/products.service'
+import { Project, CalculatorOffer, Product, CURRENCY_SYMBOLS } from '@/types'
 
 function CalculatorContent() {
   const searchParams = useSearchParams()
@@ -17,6 +18,7 @@ function CalculatorContent() {
   const projectId = searchParams.get('projectId')
   const [project, setProject] = useState<Project | null>(null)
   const [offers, setOffers] = useState<CalculatorOffer[]>([])
+  const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
 
@@ -27,13 +29,15 @@ function CalculatorContent() {
     Promise.all([
       getProjects(user.uid),
       getOffers(user.uid, projectId),
+      getProducts(projectId, user.uid),
     ])
-      .then(([ps, os]) => {
+      .then(([ps, os, prods]) => {
         if (cancelled) return
         const p = ps.find((x) => x.id === projectId)
         if (!p) { router.replace('/projects'); return }
         setProject(p)
         setOffers(os)
+        setProducts(prods)
         setLoading(false)
       })
       .catch((err) => {
@@ -67,6 +71,7 @@ function CalculatorContent() {
         projectId={project.id}
         savedOffers={offers}
         onOffersChange={setOffers}
+        products={products}
       />
     </div>
   )

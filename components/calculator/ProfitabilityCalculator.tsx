@@ -2,7 +2,7 @@
 // ============================================================
 // PROFITABILITY CALCULATOR — Calculateur ROAS BE + offres
 // ============================================================
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import {
   DndContext,
@@ -24,11 +24,11 @@ import { CSS } from '@dnd-kit/utilities'
 import Card, { CardHeader } from '@/components/ui/Card'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
-import { CalculatorInputs, CalculatorOffer, Currency } from '@/types'
+import { CalculatorInputs, CalculatorOffer, Currency, Product } from '@/types'
 import { calcProfitability } from '@/lib/calculations'
 import { formatCurrency, formatPercent, formatMultiplier } from '@/lib/utils'
 import { saveOffer, updateOffer, deleteOffer, updateOffersOrder } from '@/services/calculator.service'
-import { Calculator, Save, Trash2, Pencil, Plus, Info, GripVertical } from 'lucide-react'
+import { Calculator, Save, Trash2, Pencil, Plus, Info, GripVertical, ChevronDown, Package } from 'lucide-react'
 import { cn, safeDivide } from '@/lib/utils'
 
 interface ProfitabilityCalculatorProps {
@@ -37,7 +37,10 @@ interface ProfitabilityCalculatorProps {
   projectId: string
   savedOffers: CalculatorOffer[]
   onOffersChange: (offers: CalculatorOffer[]) => void
+  products: Product[]
 }
+
+const NO_PRODUCT_KEY = '__none__'
 
 const ZERO_INPUTS: CalculatorInputs = {
   productPrice: 0, vatRate: 20, aov: 0,
@@ -50,14 +53,19 @@ const sym = (c: Currency) => ({ EUR: '€', USD: '$', GBP: '£', CAD: 'CA$', AUD
 const n = { valueAsNumber: true, min: 0 }
 
 export default function ProfitabilityCalculator({
-  currency, userId, projectId, savedOffers, onOffersChange,
+  currency, userId, projectId, savedOffers, onOffersChange, products,
 }: ProfitabilityCalculatorProps) {
   const [saving, setSaving] = useState(false)
   const [offerName, setOfferName] = useState('')
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
   const [activeOfferId, setActiveOfferId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
   const cs = sym(currency)
+
+  const productMap = useMemo(() => new Map(products.map((p) => [p.id, p])), [products])
 
   const { register, control, reset } = useForm<CalculatorInputs>({
     defaultValues: ZERO_INPUTS,
@@ -88,6 +96,7 @@ export default function ProfitabilityCalculator({
   const handleNewOffer = () => {
     setActiveOfferId(null)
     setOfferName('')
+    setSelectedProductId(null)
     setSaveError(null)
     reset(ZERO_INPUTS)
   }
@@ -96,6 +105,7 @@ export default function ProfitabilityCalculator({
     reset(offer.inputs)
     setActiveOfferId(offer.id)
     setOfferName(offer.name)
+    setSelectedProductId(offer.productId ?? null)
     setSaveError(null)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -105,16 +115,16 @@ export default function ProfitabilityCalculator({
     setSaving(true); setSaveError(null)
     try {
       if (activeOfferId) {
-        await updateOffer(activeOfferId, offerName, inputs, results)
+        await updateOffer(activeOfferId, offerName, inputs, results, selectedProductId)
         onOffersChange(savedOffers.map((o) =>
           o.id === activeOfferId
-            ? { ...o, name: offerName.trim(), inputs, outputs: results, updatedAt: new Date() }
+            ? { ...o, name: offerName.trim(), productId: selectedProductId ?? undefined, inputs, outputs: results, updatedAt: new Date() }
             : o
         ))
       } else {
-        // Nouvelle offre placée en tête de liste : order = (min existant) - 1
+        // Nouvelle offre placée en tête : order = (min existant) - 1
         const minOrder = savedOffers.reduce<number>((m, o) => o.order !== undefined ? Math.min(m, o.order) : m, 0)
-        const offer = await saveOffer(userId, projectId, offerName, inputs, results, minOrder - 1)
+        const offer = await saveOffer(userId, projectId, offerName, inputs, results, minOrder - 1, selectedProductId)
         onOffersChange([offer, ...savedOffers])
         setActiveOfferId(offer.id)
       }
@@ -124,24 +134,67 @@ export default function ProfitabilityCalculator({
     } finally { setSaving(false) }
   }
 
+  // ── Groupement par produit ──
+  const groups = useMemo(() => {
+    type Group = { key: string; productName: string; offers: CalculatorOffer[] }
+    const map = new Map<string, Group>()
+    for (const o of savedOffers) {
+      const key = o.productId && productMap.has(o.productId) ? o.productId : NO_PRODUCT_KEY
+      const productName = key === NO_PRODUCT_KEY ? 'Sans produit' : productMap.get(key)!.name
+      if (!map.has(key)) map.set(key, { key, productName, offers: [] })
+      map.get(key)!.offers.push(o)
+    }
+    return Array.from(map.values()).sort((a, b) => {
+      if (a.key === NO_PRODUCT_KEY) return 1
+      if (b.key === NO_PRODUCT_KEY) return -1
+      return a.productName.localeCompare(b.productName)
+    })
+  }, [savedOffers, productMap])
+
   // ── Drag & drop ──
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  // Drag uniquement à l'intérieur d'un groupe ; on resequence globalement après.
+  const handleDragEnd = (event: DragEndEvent, groupKey: string) => {
     const { active, over } = event
     if (!over || active.id === over.id) return
-    const oldIndex = savedOffers.findIndex((o) => o.id === active.id)
-    const newIndex = savedOffers.findIndex((o) => o.id === over.id)
-    if (oldIndex === -1 || newIndex === -1) return
-    const reordered = arrayMove(savedOffers, oldIndex, newIndex).map((o, i) => ({ ...o, order: i }))
-    // Optimistic UI
+    const newFlat: CalculatorOffer[] = []
+    for (const g of groups) {
+      if (g.key === groupKey) {
+        const oldIndex = g.offers.findIndex((o) => o.id === active.id)
+        const newIndex = g.offers.findIndex((o) => o.id === over.id)
+        if (oldIndex === -1 || newIndex === -1) {
+          newFlat.push(...g.offers)
+        } else {
+          newFlat.push(...arrayMove(g.offers, oldIndex, newIndex))
+        }
+      } else {
+        newFlat.push(...g.offers)
+      }
+    }
+    const reordered = newFlat.map((o, i) => ({ ...o, order: i }))
     onOffersChange(reordered)
-    // Persistance Firestore (best-effort)
     updateOffersOrder(reordered.map((o) => o.id)).catch((err) => {
       console.error('Erreur reorder offres:', err)
+    })
+  }
+
+  const toggleExpanded = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+
+  const toggleGroup = (key: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key); else next.add(key)
+      return next
     })
   }
 
@@ -160,41 +213,56 @@ export default function ProfitabilityCalculator({
     <div className="space-y-5">
       {/* ── Barre d'action offre ── */}
       <div className={cn(
-        'flex items-center gap-3 p-3 rounded-xl border',
+        'flex flex-wrap items-center gap-3 p-3 rounded-xl border',
         activeOfferId
           ? 'border-violet-500/40 bg-violet-600/10'
           : 'border-[#23272F] bg-[#0E1118]'
       )}>
         {activeOfferId ? (
-          <>
-            <Pencil size={13} className="text-violet-400 shrink-0" />
-            <span className="text-xs font-semibold text-violet-300 truncate flex-1">
-              Modification : {offerName}
-            </span>
-            <Button size="sm" variant="ghost" icon={<Plus size={12} />} onClick={handleNewOffer}>
-              Nouvelle offre
-            </Button>
-            <Button size="sm" loading={saving} icon={<Save size={12} />} onClick={handleSave}>
-              Mettre à jour
-            </Button>
-          </>
+          <Pencil size={13} className="text-violet-400 shrink-0" />
         ) : (
-          <>
-            <Save size={13} className="text-zinc-500 shrink-0" />
-            <input
-              type="text"
-              placeholder="Nom de la nouvelle offre…"
-              value={offerName}
-              onChange={(e) => setOfferName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSave()}
-              className="flex-1 bg-transparent text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none"
-            />
-            {saveError && <p className="text-xs text-red-400 shrink-0">{saveError}</p>}
-            <Button size="sm" loading={saving} icon={<Save size={12} />} onClick={handleSave}>
-              Enregistrer
-            </Button>
-          </>
+          <Save size={13} className="text-zinc-500 shrink-0" />
         )}
+
+        {/* Dropdown produit */}
+        <div className="relative flex items-center gap-1.5">
+          <Package size={11} className="text-zinc-600" />
+          <select
+            value={selectedProductId ?? ''}
+            onChange={(e) => setSelectedProductId(e.target.value || null)}
+            className="bg-[#12151C] border border-[#23272F] rounded-lg pl-2 pr-7 py-1 text-xs text-zinc-200 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 appearance-none cursor-pointer"
+          >
+            <option value="">Sans produit</option>
+            {products.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+          <ChevronDown size={11} className="absolute right-1.5 text-zinc-600 pointer-events-none" />
+        </div>
+
+        {/* Nom de l'offre */}
+        <input
+          type="text"
+          placeholder={activeOfferId ? `Modification : ${offerName}` : 'Nom de l\'offre…'}
+          value={offerName}
+          onChange={(e) => setOfferName(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+          className={cn(
+            'flex-1 min-w-[160px] bg-transparent text-xs focus:outline-none',
+            activeOfferId ? 'text-violet-300 font-semibold' : 'text-zinc-100 placeholder:text-zinc-600'
+          )}
+        />
+
+        {saveError && <p className="text-xs text-red-400 shrink-0">{saveError}</p>}
+
+        {activeOfferId && (
+          <Button size="sm" variant="ghost" icon={<Plus size={12} />} onClick={handleNewOffer}>
+            Nouvelle offre
+          </Button>
+        )}
+        <Button size="sm" loading={saving} icon={<Save size={12} />} onClick={handleSave}>
+          {activeOfferId ? 'Mettre à jour' : 'Enregistrer'}
+        </Button>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-5">
@@ -353,26 +421,68 @@ export default function ProfitabilityCalculator({
               Offres sauvegardées ({savedOffers.length})
             </h3>
             <p className="text-[10px] text-zinc-500 hidden sm:block">
-              Glisse <GripVertical size={10} className="inline -mt-0.5" /> pour réordonner
+              Glisse <GripVertical size={10} className="inline -mt-0.5" /> pour réordonner · clic sur un bandeau pour déplier
             </p>
           </div>
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={savedOffers.map((o) => o.id)} strategy={verticalListSortingStrategy}>
-              <div className="space-y-2">
-                {savedOffers.map((offer) => (
-                  <SortableOfferCard
-                    key={offer.id}
-                    offer={offer}
-                    currency={currency}
-                    isActive={activeOfferId === offer.id}
-                    deleting={deletingId === offer.id}
-                    onEdit={handleEditOffer}
-                    onDelete={handleDelete}
-                  />
-                ))}
-              </div>
-            </SortableContext>
-          </DndContext>
+
+          <div className="space-y-4">
+            {groups.map((g) => {
+              const collapsed = collapsedGroups.has(g.key)
+              return (
+                <div key={g.key}>
+                  {/* Header de groupe */}
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(g.key)}
+                    className="flex items-center gap-2 mb-2 group"
+                  >
+                    <ChevronDown
+                      size={13}
+                      className={cn(
+                        'text-zinc-500 group-hover:text-zinc-300 transition-transform',
+                        collapsed && '-rotate-90'
+                      )}
+                    />
+                    <span className={cn(
+                      'text-xs font-semibold uppercase tracking-[0.1em]',
+                      g.key === NO_PRODUCT_KEY ? 'text-zinc-500' : 'text-zinc-300 group-hover:text-white'
+                    )}>
+                      {g.productName}
+                    </span>
+                    <span className="text-[10px] text-zinc-600 font-medium">
+                      {g.offers.length}
+                    </span>
+                  </button>
+
+                  {!collapsed && (
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={(e) => handleDragEnd(e, g.key)}
+                    >
+                      <SortableContext items={g.offers.map((o) => o.id)} strategy={verticalListSortingStrategy}>
+                        <div className="space-y-2">
+                          {g.offers.map((offer) => (
+                            <SortableOfferCard
+                              key={offer.id}
+                              offer={offer}
+                              currency={currency}
+                              isActive={activeOfferId === offer.id}
+                              deleting={deletingId === offer.id}
+                              expanded={expandedIds.has(offer.id)}
+                              onToggleExpand={toggleExpanded}
+                              onEdit={handleEditOffer}
+                              onDelete={handleDelete}
+                            />
+                          ))}
+                        </div>
+                      </SortableContext>
+                    </DndContext>
+                  )}
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
     </div>
@@ -381,12 +491,14 @@ export default function ProfitabilityCalculator({
 
 // ── Sortable offer card ──
 function SortableOfferCard({
-  offer, currency, isActive, deleting, onEdit, onDelete,
+  offer, currency, isActive, deleting, expanded, onToggleExpand, onEdit, onDelete,
 }: {
   offer: CalculatorOffer
   currency: Currency
   isActive: boolean
   deleting: boolean
+  expanded: boolean
+  onToggleExpand: (id: string) => void
   onEdit: (offer: CalculatorOffer) => void
   onDelete: (offerId: string) => void
 }) {
@@ -398,36 +510,62 @@ function SortableOfferCard({
     zIndex: isDragging ? 10 : 'auto',
   }
 
+  const totalCogs = offer.inputs.cogsProduct + offer.inputs.cogsPackaging + offer.inputs.cogsOther
+  const beRoasColor = offer.outputs.breakEvenROAS <= 1.5
+    ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
+    : offer.outputs.breakEvenROAS <= 2.5
+    ? 'text-amber-400 bg-amber-500/10 border-amber-500/20'
+    : 'text-red-400 bg-red-500/10 border-red-500/20'
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       className={cn(
-        'rounded-xl border p-4 transition-colors',
+        'rounded-xl border transition-colors',
         isActive
           ? 'border-violet-500/50 bg-violet-600/10'
-          : 'border-[#23272F] bg-[#12151C] hover:border-[#2F3541] hover:bg-[#171B23]',
+          : 'border-[#23272F] bg-[#12151C] hover:border-[#2F3541]',
         isDragging && 'shadow-2xl shadow-black/40 border-violet-500/40'
       )}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between gap-3 mb-3">
-        <div className="flex items-center gap-2 min-w-0">
-          <button
-            type="button"
-            {...attributes}
-            {...listeners}
-            aria-label="Réordonner cette offre"
-            className="cursor-grab active:cursor-grabbing text-zinc-600 hover:text-zinc-300 transition-colors -ml-1 p-1 rounded touch-none"
-          >
-            <GripVertical size={14} />
-          </button>
-          {isActive && <span className="w-1.5 h-1.5 rounded-full bg-violet-400 shrink-0" />}
-          <span className={cn('text-sm font-semibold truncate', isActive ? 'text-violet-300' : 'text-white')}>
-            {offer.name}
-          </span>
-        </div>
-        <div className="flex items-center gap-1.5 shrink-0">
+      {/* Bandeau (toujours visible) */}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => onToggleExpand(offer.id)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggleExpand(offer.id) } }}
+        className={cn(
+          'flex items-center gap-3 px-4 py-3 cursor-pointer select-none rounded-xl',
+          !expanded && !isActive && 'hover:bg-[#171B23]'
+        )}
+      >
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          onClick={(e) => e.stopPropagation()}
+          aria-label="Réordonner cette offre"
+          className="cursor-grab active:cursor-grabbing text-zinc-600 hover:text-zinc-300 transition-colors -ml-1 p-1 rounded touch-none shrink-0"
+        >
+          <GripVertical size={14} />
+        </button>
+
+        {isActive && <span className="w-1.5 h-1.5 rounded-full bg-violet-400 shrink-0" />}
+
+        <span className={cn('text-sm font-semibold truncate flex-1', isActive ? 'text-violet-300' : 'text-white')}>
+          {offer.name}
+        </span>
+
+        {/* Badge ROAS BE en aperçu rapide */}
+        <span className={cn(
+          'text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border shrink-0 hidden sm:inline-flex items-center gap-1',
+          beRoasColor
+        )}>
+          ROAS BE {formatMultiplier(offer.outputs.breakEvenROAS)}
+        </span>
+
+        <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
           <button
             onClick={() => onEdit(offer)}
             className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-zinc-400 hover:text-white hover:bg-[#1F242D] transition-colors"
@@ -442,20 +580,50 @@ function SortableOfferCard({
             <Trash2 size={11} /> {deleting ? '…' : 'Supprimer'}
           </button>
         </div>
+
+        <ChevronDown
+          size={14}
+          className={cn(
+            'text-zinc-500 shrink-0 transition-transform',
+            expanded && 'rotate-180'
+          )}
+        />
       </div>
 
-      {/* Métriques clés */}
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-        <OfferStat label="Prix TTC" value={formatCurrency(offer.inputs.productPrice, currency)} />
-        <OfferStat label="Multiplicateur" value={offer.outputs.priceMultiple > 0 ? `${offer.outputs.priceMultiple.toFixed(2)}x` : '—'}
-          color={offer.outputs.priceMultiple >= 5 ? 'emerald' : offer.outputs.priceMultiple >= 3 ? 'amber' : 'red'} />
-        <OfferStat label="Marge brute" value={formatPercent(offer.outputs.grossMargin)}
-          color={offer.outputs.grossMargin >= 30 ? 'emerald' : offer.outputs.grossMargin >= 15 ? 'amber' : 'red'} />
-        <OfferStat label="ROAS BE" value={formatMultiplier(offer.outputs.breakEvenROAS)} color="violet" />
-        <OfferStat label="CPA BE" value={formatCurrency(offer.outputs.breakEvenCPA, currency)} color="violet" />
-        <OfferStat label="Profit brut/cmd" value={formatCurrency(offer.outputs.grossProfitPerOrder, currency)}
-          color={offer.outputs.grossProfitPerOrder > 0 ? 'emerald' : 'red'} />
-      </div>
+      {/* Body (déplié) */}
+      {expanded && (
+        <div className="px-4 pb-4 pt-1 space-y-3 border-t border-[#1B1F27] mt-1">
+          {/* Inputs principaux */}
+          <div>
+            <p className="text-[10px] text-zinc-500 uppercase tracking-[0.1em] font-semibold mb-2">Inputs principaux</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <OfferStat label="Prix TTC" value={formatCurrency(offer.inputs.productPrice, currency)} />
+              <OfferStat label="COGS total" value={formatCurrency(totalCogs, currency)} />
+              <OfferStat label="AOV" value={formatCurrency(offer.inputs.aov || offer.inputs.productPrice, currency)} />
+              <OfferStat label="Marge visée" value={`${offer.inputs.targetMargin}%`} />
+            </div>
+          </div>
+
+          {/* Outputs */}
+          <div>
+            <p className="text-[10px] text-zinc-500 uppercase tracking-[0.1em] font-semibold mb-2">Résultats</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <OfferStat label="Multiplicateur" value={offer.outputs.priceMultiple > 0 ? `${offer.outputs.priceMultiple.toFixed(2)}x` : '—'}
+                color={offer.outputs.priceMultiple >= 5 ? 'emerald' : offer.outputs.priceMultiple >= 3 ? 'amber' : 'red'} />
+              <OfferStat label="Marge brute" value={formatPercent(offer.outputs.grossMargin)}
+                color={offer.outputs.grossMargin >= 30 ? 'emerald' : offer.outputs.grossMargin >= 15 ? 'amber' : 'red'} />
+              <OfferStat label="Coverage" value={offer.outputs.revenueMultiple > 0 ? `${offer.outputs.revenueMultiple.toFixed(2)}x` : '—'}
+                color={offer.outputs.revenueMultiple >= 2 ? 'emerald' : offer.outputs.revenueMultiple >= 1.5 ? 'amber' : 'red'} />
+              <OfferStat label="Profit brut/cmd" value={formatCurrency(offer.outputs.grossProfitPerOrder, currency)}
+                color={offer.outputs.grossProfitPerOrder > 0 ? 'emerald' : 'red'} />
+              <OfferStat label="ROAS BE" value={formatMultiplier(offer.outputs.breakEvenROAS)} color="violet" />
+              <OfferStat label="CPA BE" value={formatCurrency(offer.outputs.breakEvenCPA, currency)} color="violet" />
+              <OfferStat label={`ROAS cible (${offer.inputs.targetMargin}%)`} value={formatMultiplier(offer.outputs.targetROAS)} color="emerald" />
+              <OfferStat label={`CPA cible (${offer.inputs.targetMargin}%)`} value={formatCurrency(offer.outputs.targetCPA, currency)} color="emerald" />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

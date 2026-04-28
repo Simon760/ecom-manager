@@ -23,6 +23,7 @@ function toOffer(id: string, data: Record<string, unknown>): CalculatorOffer {
     projectId: data.projectId as string,
     userId: data.userId as string,
     name: data.name as string,
+    productId: typeof data.productId === 'string' ? (data.productId as string) : undefined,
     inputs: data.inputs as CalculatorInputs,
     outputs: data.outputs as CalculatorOutputs,
     order: typeof data.order === 'number' ? (data.order as number) : undefined,
@@ -56,12 +57,16 @@ export async function saveOffer(
   name: string,
   inputs: CalculatorInputs,
   outputs: CalculatorOutputs,
-  order: number = 0
+  order: number = 0,
+  productId?: string | null
 ): Promise<CalculatorOffer> {
+  const trimmedName = name.trim()
+  const cleanProductId = productId && productId.length > 0 ? productId : null
   const payload = {
     userId,
     projectId,
-    name: name.trim(),
+    name: trimmedName,
+    productId: cleanProductId,
     inputs,
     outputs,
     order,
@@ -73,7 +78,8 @@ export async function saveOffer(
     id: ref.id,
     userId,
     projectId,
-    name: name.trim(),
+    name: trimmedName,
+    productId: cleanProductId ?? undefined,
     inputs,
     outputs,
     order,
@@ -86,10 +92,13 @@ export async function updateOffer(
   offerId: string,
   name: string,
   inputs: CalculatorInputs,
-  outputs: CalculatorOutputs
+  outputs: CalculatorOutputs,
+  productId?: string | null
 ): Promise<void> {
+  const cleanProductId = productId && productId.length > 0 ? productId : null
   await updateDoc(doc(db, COLLECTIONS.CALCULATOR_OFFERS, offerId), {
     name: name.trim(),
+    productId: cleanProductId,
     inputs,
     outputs,
     updatedAt: serverTimestamp(),
