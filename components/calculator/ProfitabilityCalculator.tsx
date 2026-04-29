@@ -28,7 +28,7 @@ import { CalculatorInputs, CalculatorOffer, Currency, Product } from '@/types'
 import { calcProfitability } from '@/lib/calculations'
 import { formatCurrency, formatPercent, formatMultiplier } from '@/lib/utils'
 import { saveOffer, updateOffer, deleteOffer, updateOffersOrder } from '@/services/calculator.service'
-import { Calculator, Save, Trash2, Pencil, Plus, Info, GripVertical, ChevronDown, Package } from 'lucide-react'
+import { Calculator, Save, Trash2, Pencil, Plus, Info, GripVertical, ChevronDown, Package, FolderOpen } from 'lucide-react'
 import { cn, safeDivide } from '@/lib/utils'
 
 interface ProfitabilityCalculatorProps {
@@ -63,6 +63,7 @@ export default function ProfitabilityCalculator({
   const [saveError, setSaveError] = useState<string | null>(null)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
+  const [view, setView] = useState<'calculator' | 'offers'>('calculator')
   const cs = sym(currency)
 
   const productMap = useMemo(() => new Map(products.map((p) => [p.id, p])), [products])
@@ -107,6 +108,7 @@ export default function ProfitabilityCalculator({
     setOfferName(offer.name)
     setSelectedProductId(offer.productId ?? null)
     setSaveError(null)
+    setView('calculator')
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -211,6 +213,42 @@ export default function ProfitabilityCalculator({
 
   return (
     <div className="space-y-5">
+      {/* ── Onglets : Calculateur / Offres sauvegardées ── */}
+      <div className="inline-flex items-center gap-1 p-1 rounded-xl border border-[#23272F] bg-[#0E1118]">
+        <button
+          type="button"
+          onClick={() => setView('calculator')}
+          className={cn(
+            'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
+            view === 'calculator'
+              ? 'bg-[#1F242D] text-white shadow-sm'
+              : 'text-zinc-500 hover:text-zinc-300'
+          )}
+        >
+          <Calculator size={12} /> Calculateur
+        </button>
+        <button
+          type="button"
+          onClick={() => setView('offers')}
+          className={cn(
+            'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
+            view === 'offers'
+              ? 'bg-[#1F242D] text-white shadow-sm'
+              : 'text-zinc-500 hover:text-zinc-300'
+          )}
+        >
+          <FolderOpen size={12} /> Offres sauvegardées
+          <span className={cn(
+            'inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-md text-[10px] font-bold',
+            view === 'offers' ? 'bg-violet-500/20 text-violet-300' : 'bg-zinc-800 text-zinc-500'
+          )}>
+            {savedOffers.length}
+          </span>
+        </button>
+      </div>
+
+      {view === 'calculator' && (
+      <>
       {/* ── Barre d'action offre ── */}
       <div className={cn(
         'flex flex-wrap items-center gap-3 p-3 rounded-xl border',
@@ -412,14 +450,25 @@ export default function ProfitabilityCalculator({
           </Card>
         </div>
       </div>
+      </>
+      )}
 
-      {/* ── Récap des offres sauvegardées ── */}
-      {savedOffers.length > 0 && (
+      {/* ── Vue Offres sauvegardées (vide) ── */}
+      {view === 'offers' && savedOffers.length === 0 && (
+        <div className="rounded-xl border border-[#23272F] bg-[#0E1118] py-12 px-6 text-center">
+          <FolderOpen size={28} className="text-zinc-700 mx-auto mb-3" />
+          <p className="text-sm font-semibold text-zinc-300 mb-1">Aucune offre sauvegardée</p>
+          <p className="text-xs text-zinc-500 mb-4">Crée une offre depuis l'onglet Calculateur pour la retrouver ici.</p>
+          <Button size="sm" variant="ghost" icon={<Calculator size={12} />} onClick={() => setView('calculator')}>
+            Aller au calculateur
+          </Button>
+        </div>
+      )}
+
+      {/* ── Vue Offres sauvegardées (liste) ── */}
+      {view === 'offers' && savedOffers.length > 0 && (
         <div>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-white">
-              Offres sauvegardées ({savedOffers.length})
-            </h3>
+          <div className="flex items-center justify-end mb-3">
             <p className="text-[10px] text-zinc-500 hidden sm:block">
               Glisse <GripVertical size={10} className="inline -mt-0.5" /> pour réordonner · clic sur un bandeau pour déplier
             </p>
